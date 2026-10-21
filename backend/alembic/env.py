@@ -1,9 +1,8 @@
-import os
-
 from alembic import context
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import create_engine, pool
 
+from app.core.config import get_settings
 from app.models import Base
 
 config = context.config
@@ -11,11 +10,7 @@ target_metadata = Base.metadata
 
 
 def database_url() -> str:
-    url = os.environ["DATABASE_URL"]
-    # Compose passes a plain postgresql:// URL; select the psycopg 3 driver explicitly.
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return url
+    return get_settings().sqlalchemy_url
 
 
 def run_migrations_offline() -> None:
