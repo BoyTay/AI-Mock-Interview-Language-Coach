@@ -1,7 +1,13 @@
 import { Code } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import ModeSwitch from './ModeSwitch'
 import { NAV_ITEMS } from './navItems'
+import StreakWidget from './StreakWidget'
+
+// Mock values until the dashboard API exists (issue #34).
+const STREAK_DAYS = 14
+const STREAK_WEEK = [true, true, true, true, true, true, false]
 
 export default function Sidebar({ collapsed }) {
   return (
@@ -23,6 +29,8 @@ export default function Sidebar({ collapsed }) {
           </div>
         )}
       </div>
+
+      {!collapsed && <ModeSwitch />}
 
       <nav aria-label="Primary" className="flex flex-col gap-1">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
@@ -47,6 +55,10 @@ export default function Sidebar({ collapsed }) {
           </NavLink>
         ))}
       </nav>
+
+      <div className="mt-auto">
+        <StreakWidget days={STREAK_DAYS} week={STREAK_WEEK} collapsed={collapsed} />
+      </div>
     </aside>
   )
 }
