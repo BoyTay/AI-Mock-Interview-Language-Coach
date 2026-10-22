@@ -1,3 +1,8 @@
+import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { routes } from './routes'
+
+const router = createBrowserRouter(routes)
+
 export default function App() {
-  return <div>DevCoach AI</div>
+  return <RouterProvider router={router} />
 }
