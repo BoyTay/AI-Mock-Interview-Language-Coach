@@ -23,11 +23,11 @@ export default function ModeSwitch() {
             aria-pressed={current === id}
             onClick={() => navigate(to)}
             className={cn(
-              'flex h-[34px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-xs font-medium',
+              'flex h-[34px] min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium',
               current === id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200',
             )}
           >
-            <Icon className="size-3.5" aria-hidden="true" />
+            <Icon className="size-3.5 shrink-0" aria-hidden="true" />
             {label}
           </button>
         ))}
