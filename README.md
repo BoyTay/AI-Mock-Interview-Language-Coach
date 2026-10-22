@@ -2,7 +2,7 @@
 
 Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, dành cho sinh viên và lập trình viên Software Engineering.
 
-> Trạng thái hiện tại: **giai đoạn thiết kế giao diện (UI design)**. Chưa có code ứng dụng.
+> Trạng thái hiện tại: đã có thiết kế giao diện, hạ tầng Docker, CSDL, khung FastAPI và khung frontend React (App Shell, điều hướng). Các màn hình chi tiết đang được dựng dần theo từng issue.
 
 ## Mục tiêu
 
@@ -41,3 +41,15 @@ Các file `.dc.html` được tạo bằng công cụ Design của Claude và ch
 1. Hoàn thiện thiết kế các màn hình còn lại (Profile & CV/JD, màn hình cấu hình phiên phỏng vấn).
 2. Dựng giao diện React theo design system.
 3. Xây dựng backend và tích hợp AI chấm điểm.
+
+## Chạy dự án (phát triển)
+
+```bash
+cp .env.example .env        # điền POSTGRES_PASSWORD, và DB_HOST_PORT nếu cổng 5432 đang bận
+docker compose up -d --build
+```
+
+- Frontend: http://localhost:5173, Backend: http://localhost:8000 (`/docs`, `/health`)
+- Chạy test frontend: `docker compose exec frontend npm test`
+- Sau khi đổi cấu hình Vite/Tailwind/PostCSS hoặc cài thêm thư viện, khởi động lại dev server: `docker compose restart frontend`
+- Áp migration CSDL: `docker compose exec backend alembic upgrade head`
