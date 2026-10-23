@@ -2,7 +2,7 @@
 
 Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, dành cho sinh viên và lập trình viên Software Engineering.
 
-> Trạng thái hiện tại: đã có thiết kế giao diện, hạ tầng Docker, CSDL, khung FastAPI và khung frontend React (App Shell, điều hướng). Các màn hình chi tiết đang được dựng dần theo từng issue.
+> Trạng thái hiện tại: đã có thiết kế giao diện, hạ tầng Docker, CSDL, khung FastAPI và frontend React với 4 màn hình (Dashboard, Mock Interview, English Writing Coach, Mistake Flashcards) chạy bằng dữ liệu mẫu trong `frontend/src/mocks/`. Chưa nối API thật.
 
 ## Mục tiêu
 
