@@ -1,11 +1,9 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from 'recharts'
 import Card from '@/components/common/Card'
 
-const ALT =
-  'Radar chart. Backend Architecture 72, Database and SQL 85, Problem Solving 68, English Fluency 74, Grammar and Vocab 62, out of 100.'
-
 export default function CompetencyRadar({ labels, current, target }) {
   const data = labels.map((subject, i) => ({ subject, current: current[i], target }))
+  const alt = `Radar chart. ${labels.map((l, i) => `${l} ${current[i]}`).join(', ')}, out of 100.`
 
   return (
     <Card className="flex min-w-0 flex-[1_1_360px] flex-col gap-3 p-5">
@@ -13,7 +11,7 @@ export default function CompetencyRadar({ labels, current, target }) {
         <h2 className="text-base font-semibold text-slate-50">Competency radar</h2>
         <span className="text-[13px] text-slate-400">Current level vs. target of {target}</span>
       </div>
-      <div role="img" aria-label={ALT} className="mx-auto h-[262px] w-full max-w-[420px]">
+      <div role="img" aria-label={alt} className="mx-auto h-[262px] w-full max-w-[420px]">
         <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 380, height: 262 }}>
           <RadarChart data={data} outerRadius="68%">
             <PolarGrid gridType="polygon" stroke="#1e293b" />

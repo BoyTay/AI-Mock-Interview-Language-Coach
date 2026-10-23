@@ -1,11 +1,11 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import Card from '@/components/common/Card'
 
-const ALT =
-  'Line chart of weekly scores. Technical interviews rose from 58 to 81 over eight weeks. English writing rose from 52 to 72.'
 const AXIS = { fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }
 
 export default function ScoreProgression({ tech, english }) {
+  const last = tech.length - 1
+  const alt = `Line chart of weekly scores. Technical interviews went from ${tech[0]} to ${tech[last]} over ${tech.length} weeks. English writing went from ${english[0]} to ${english[last]}.`
   const data = tech.map((t, i) => ({ week: `W${i + 1}`, tech: t, english: english[i] }))
 
   return (
@@ -26,7 +26,7 @@ export default function ScoreProgression({ tech, english }) {
           </span>
         </div>
       </div>
-      <div role="img" aria-label={ALT} className="h-[240px] w-full">
+      <div role="img" aria-label={alt} className="h-[240px] w-full">
         <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 580, height: 240 }}>
           <LineChart data={data} margin={{ top: 12, right: 16, bottom: 0, left: -8 }}>
             <CartesianGrid vertical={false} stroke="#1e293b" />
