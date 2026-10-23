@@ -1,16 +1,18 @@
 import { RefreshCw } from 'lucide-react'
+import { forwardRef } from 'react'
 import Caption from '@/components/common/Caption'
 
-export default function FlipCard({ card, flipped, onFlip }) {
+const FlipCard = forwardRef(function FlipCard({ card, flipped, onFlip }, ref) {
   return (
     <div className="flip-scene w-full">
       <button
+        ref={ref}
         type="button"
         aria-pressed={flipped}
-        aria-label="Flashcard. Press to flip between question and answer."
         onClick={onFlip}
         className="flip-card relative block h-[360px] w-full cursor-pointer rounded-2xl border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400"
       >
+        <span className="sr-only">Flashcard. Press to flip between question and answer.</span>
         <span
           aria-hidden={flipped}
           className="flip-face absolute inset-0 flex flex-col gap-4 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 px-8 py-7"
@@ -41,4 +43,6 @@ export default function FlipCard({ card, flipped, onFlip }) {
       </button>
     </div>
   )
-}
+})
+
+export default FlipCard

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import Badge from '@/components/common/Badge'
 import FlipCard from '@/components/flashcards/FlipCard'
 import RatingButtons from '@/components/flashcards/RatingButtons'
@@ -9,6 +10,16 @@ const TOTAL = 15
 
 export default function Flashcards() {
   const s = useReviewSession({ deck, total: TOTAL })
+  const cardRef = useRef(null)
+  const doneRef = useRef(null)
+  const lastN = useRef(s.n)
+
+  // Keep keyboard focus on something useful when the focused rating button is disabled or removed.
+  useEffect(() => {
+    if (lastN.current === s.n) return
+    lastN.current = s.n
+    ;(s.finished ? doneRef : cardRef).current?.focus()
+  }, [s.n, s.finished])
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6">
@@ -37,10 +48,10 @@ export default function Flashcards() {
       </div>
 
       {s.finished ? (
-        <SessionComplete onRestart={s.restart} />
+        <SessionComplete ref={doneRef} onRestart={s.restart} />
       ) : (
         <div className="flex flex-col gap-6">
-          <FlipCard card={s.card} flipped={s.flipped} onFlip={s.flip} />
+          <FlipCard ref={cardRef} card={s.card} flipped={s.flipped} onFlip={s.flip} />
           <RatingButtons disabled={!s.flipped} onRate={s.rate} />
         </div>
       )}

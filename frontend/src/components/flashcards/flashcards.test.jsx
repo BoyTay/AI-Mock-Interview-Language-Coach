@@ -46,3 +46,31 @@ test('rating the last card shows the completion state and Restart starts over', 
   expect(screen.getByText('Card 1 of 15 due today')).toBeInTheDocument()
   expect(card()).toHaveAttribute('aria-pressed', 'false')
 })
+
+test('the card button exposes the visible face text to assistive tech', async () => {
+  const user = userEvent.setup()
+  render(<Flashcards />)
+  expect(
+    screen.getByRole('button', { name: /A query filters on created_at over 30 days/ }),
+  ).toBeInTheDocument()
+
+  await user.click(card())
+  expect(screen.getByRole('button', { name: /CREATE INDEX ON orders/ })).toBeInTheDocument()
+})
+
+test('focus moves to the card after rating and to the completion heading at the end', async () => {
+  const user = userEvent.setup()
+  render(<Flashcards />)
+  await user.click(card())
+  await user.click(rating(/^Good/))
+  expect(card()).toHaveFocus()
+
+  for (let i = 0; i < 11; i++) {
+    await user.click(card())
+    await user.click(rating(/^Good/))
+  }
+  expect(screen.getByRole('heading', { name: 'Session complete' })).toHaveFocus()
+
+  await user.click(screen.getByRole('button', { name: 'Restart session' }))
+  expect(card()).toHaveFocus()
+})
