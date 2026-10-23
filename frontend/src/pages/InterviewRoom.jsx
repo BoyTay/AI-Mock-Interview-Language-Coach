@@ -87,7 +87,7 @@ export default function InterviewRoom() {
         <div
           role="group"
           aria-label="Preview state"
-          className="flex gap-0.5 rounded-[10px] border border-slate-800 bg-slate-900 p-[3px]"
+          className="flex max-w-full flex-wrap gap-0.5 rounded-[10px] border border-slate-800 bg-slate-900 p-[3px]"
         >
           {VIEWS.map(({ id, label, icon: Icon }) => (
             <button
