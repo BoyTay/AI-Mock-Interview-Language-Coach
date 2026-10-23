@@ -36,6 +36,35 @@
   }
 }
 
+/* Flashcard 3D flip. The card button carries aria-pressed; the flip is instant under reduced motion. */
+.flip-scene {
+  perspective: 1400px;
+}
+
+.flip-card {
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.flip-card[aria-pressed='true'] {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card {
+    transition: none;
+  }
+}
+
 /* Decorative animations. Components apply them with `motion-safe:` so they stay still
    under prefers-reduced-motion. */
 @keyframes wave {
