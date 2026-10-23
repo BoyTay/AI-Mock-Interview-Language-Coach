@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { useState } from 'react'
 import Badge from '@/components/common/Badge'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,23 @@ export default function ErrorCorrection({ segments }) {
   const mistakes = segments.filter((s) => s && typeof s === 'object')
   const [selectedId, setSelectedId] = useState(mistakes[0]?.id)
   const current = mistakes.find((m) => m.id === selectedId) ?? mistakes[0]
+
+  if (!current) {
+    return (
+      <div className="flex flex-col gap-[18px] p-5">
+        <div className="whitespace-pre-line text-[15px] leading-[2.15] text-slate-200">
+          {segments.map((s) => (s === null ? '\n\n' : s)).join('')}
+        </div>
+        <div
+          role="status"
+          className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300"
+        >
+          <Check className="size-4" aria-hidden="true" />
+          No mistakes found
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-[18px] p-5">
