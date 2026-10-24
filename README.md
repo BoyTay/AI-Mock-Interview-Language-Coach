@@ -53,3 +53,5 @@ docker compose up -d --build
 - Chạy test frontend: `docker compose exec frontend npm test`
 - Sau khi đổi cấu hình Vite/Tailwind/PostCSS hoặc cài thêm thư viện, khởi động lại dev server: `docker compose restart frontend`
 - Áp migration CSDL: `docker compose exec backend alembic upgrade head`
+- Chạy test backend: `docker compose exec backend sh -c "pip install -q -r requirements-dev.txt && python -m pytest"` (test dùng SQLite trong bộ nhớ, không cần Postgres)
+- API hồ sơ (người dùng mặc định, chưa có đăng nhập): `GET/PUT /api/v1/profile` (tên, vai trò mục tiêu, mục tiêu tiếng Anh) và `POST /api/v1/profile/upload-cv` (multipart, trường `file`, chỉ PDF, tối đa 5 MB; lưu văn bản vào `cv_text`, không lưu file PDF; PDF ảnh quét trả 422 `CV_NO_TEXT_LAYER`; CV quá 20 trang hoặc 50.000 ký tự trả 422 `CV_TOO_LONG`)
