@@ -17,8 +17,6 @@ class CvParseError(Exception):
         super().__init__(message)
 
 
-
-
 def _unreadable() -> CvParseError:
     return CvParseError(
         "CV_UNREADABLE",

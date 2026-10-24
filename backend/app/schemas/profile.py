@@ -35,3 +35,8 @@ class ProfileUpdate(BaseModel):
         if value is None or not value.strip():
             raise ValueError("target_role must not be blank")
         return value.strip()
+
+
+class CvUploadOut(BaseModel):
+    char_count: int
+    preview: str
