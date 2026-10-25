@@ -19,8 +19,10 @@ Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, d
 | Mock Interview | `design/Interview.dc.html` | Phòng phỏng vấn chia đôi (AI Interviewer, transcript, nhập liệu Voice / Text & Code) và báo cáo đánh giá (điểm tổng, STAR, accordion từng câu) |
 | English Writing Coach | `design/Writing.dc.html` | Trình soạn thảo có đồng hồ và bộ đếm từ, chấm band IELTS, sửa lỗi inline, Vocabulary Upgrader |
 | Mistake Flashcards | `design/Flashcards.dc.html` | Thẻ lật 3D và 4 mức đánh giá SM-2: Again, Hard, Good, Easy |
+| Session Setup | `design/SessionSetup.dc.html` | Chọn loại phiên (Tech Interview / Tech Daily Standup), vai trò, dán JD, số câu hỏi, độ khó; bảng tóm tắt đầu vào; trạng thái chưa có CV, đang khởi tạo, khởi tạo lỗi |
+| CV & JD Profile | `design/Profile.dc.html` | Upload CV PDF, xem trước văn bản đã bóc tách, sửa tên, vai trò mục tiêu, mục tiêu tiếng Anh; trạng thái chưa có CV, đang tải, lỗi upload (PDF scan, quá dài, quá 5 MB, sai định dạng) |
 
-Tất cả dùng chung App Shell: sidebar thu gọn được, bộ chuyển chế độ Tech Interview / English Coach và widget streak ngày luyện tập.
+Tất cả 6 màn dùng chung App Shell (sidebar có thêm mục Session Setup): sidebar thu gọn được, bộ chuyển chế độ Tech Interview / English Coach và widget streak ngày luyện tập.
 
 ## Design System
 
@@ -38,7 +40,7 @@ Các file `.dc.html` được tạo bằng công cụ Design của Claude và ch
 
 ## Lộ trình
 
-1. Hoàn thiện thiết kế các màn hình còn lại (Profile & CV/JD, màn hình cấu hình phiên phỏng vấn).
+1. ~~Hoàn thiện thiết kế các màn hình còn lại (Profile & CV/JD, màn hình cấu hình phiên phỏng vấn).~~ Đã xong (issue #7).
 2. Dựng giao diện React theo design system.
 3. Xây dựng backend và tích hợp AI chấm điểm.
 
