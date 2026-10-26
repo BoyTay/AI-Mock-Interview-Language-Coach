@@ -30,6 +30,14 @@ Tất cả 6 màn dùng chung App Shell (sidebar có thêm mục Session Setup):
 - Màu (chuẩn Tailwind): nền `slate-950`, card `slate-900` viền `slate-800`, nhấn chính `indigo-600`; ngữ nghĩa `emerald-500` (đạt), `amber-500` (cần cải thiện), `rose-500` (lỗi).
 - Font: Inter cho giao diện, JetBrains Mono cho số liệu và đoạn code.
 
+## Quyết định cho v1.0
+
+Chi tiết và lý do nằm ở mục 8 của `KeHoach.md`.
+
+- **Vai trò hỗ trợ:** Java Backend Intern, Python Backend Intern, Java/Python Backend Intern. Frontend và System Design lùi sang v1.1.
+- **Điểm một câu (Tech Interview):** `0.7 x technical_accuracy_score + 0.3 x communication_clarity_score`, làm tròn nửa lên, thang 100. Điểm phiên là trung bình các câu.
+- **Nút đánh giá Flashcards:** hiển thị khoảng ôn thật do SM-2 tính cho từng thẻ (ví dụ `1d`, `1d`, `14d`, `16d`), không dùng mốc cố định. Again và Hard cùng quay về 1 ngày theo công thức hiện tại, chỉ khác mức giảm EF.
+
 ## Công nghệ dự kiến
 
 React (Vite), Tailwind CSS, shadcn/ui (Radix UI), Lucide React, Recharts.
