@@ -325,3 +325,14 @@ volumes:
 * Frontend và System Design lùi sang v1.1. Lý do: ngân sách 50-100 câu hỏi của Tuần 3 không đủ phủ thêm 2 mảng, và chất lượng câu hỏi theo CV/JD quan trọng hơn độ rộng.
 * `target_role` vẫn là `VARCHAR(100)` để mở rộng sau này, nhưng giao diện chỉ cho chọn trong danh sách trên. Backend kiểm tra giá trị khi tạo phiên.
 * Bộ câu hỏi seed (Tuần 3) gồm Java, Python, SQL, OOP; bỏ React và System Design khỏi đợt seed đầu.
+
+### 8.2. Công thức điểm một câu
+
+* Schema AI giữ 2 điểm thành phần (0-100): `technical_accuracy_score` và `communication_clarity_score`.
+* **Điểm một câu = 0.7 x technical + 0.3 x communication**, làm tròn nửa lên về số nguyên (`floor(x + 0.5)`, không dùng `round()` của Python vì làm tròn chẵn). Ví dụ ở mục 4.1: 0.7 x 75 + 0.3 x 80 = 76.5, ra **77**.
+* Trọng số 70/30 vì đây là phỏng vấn kỹ thuật: đúng nội dung quan trọng hơn cách diễn đạt. Hai hằng số nằm trong một chỗ duy nhất ở backend để đổi dễ.
+* Mỗi lượt trả lời, kể cả lượt hỏi xoáy (`FOLLOW_UP`), là một dòng điểm trong báo cáo, đúng như thiết kế hiện tại.
+* **`overall_score` của phiên Tech = trung bình các điểm câu**, lưu thang 100, hiển thị số nguyên.
+* Giao diện báo cáo hiển thị một điểm `/ 100` mỗi câu; phần chi tiết mở rộng hiển thị thêm hai điểm thành phần.
+* Màu điểm giữ như thiết kế: từ 80 trở lên xanh lá, từ 60 đến 79 hổ phách, dưới 60 đỏ.
+* Lưu cả hai điểm thành phần và điểm câu trong `evaluation` (JSONB) của `session_messages`; không thêm cột mới.
