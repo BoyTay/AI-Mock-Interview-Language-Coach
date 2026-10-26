@@ -12,24 +12,31 @@ logger = logging.getLogger("app.errors")
 class AppError(Exception):
     """Raise from services/routes to return a standard error body."""
 
-    def __init__(self, status_code: int, code: str, message: str):
+    def __init__(self, status_code: int, code: str, message: str, headers: dict[str, str] | None = None):
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.headers = headers
         super().__init__(message)
 
 
-def error_response(status_code: int, code: str, message: str, details: list | None = None) -> JSONResponse:
+def error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    details: list | None = None,
+    headers: dict[str, str] | None = None,
+) -> JSONResponse:
     body: dict = {"code": code, "message": message}
     if details is not None:
         body["details"] = details
-    return JSONResponse(status_code=status_code, content={"error": body})
+    return JSONResponse(status_code=status_code, content={"error": body}, headers=headers)
 
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError):
-        return error_response(exc.status_code, exc.code, exc.message)
+        return error_response(exc.status_code, exc.code, exc.message, headers=exc.headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(_: Request, exc: StarletteHTTPException):
