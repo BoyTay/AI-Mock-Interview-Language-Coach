@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     database_url: str
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = "http://localhost:5173"
 
