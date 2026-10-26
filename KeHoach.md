@@ -336,3 +336,13 @@ volumes:
 * Giao diện báo cáo hiển thị một điểm `/ 100` mỗi câu; phần chi tiết mở rộng hiển thị thêm hai điểm thành phần.
 * Màu điểm giữ như thiết kế: từ 80 trở lên xanh lá, từ 60 đến 79 hổ phách, dưới 60 đỏ.
 * Lưu cả hai điểm thành phần và điểm câu trong `evaluation` (JSONB) của `session_messages`; không thêm cột mới.
+
+### 8.3. Khoảng ôn hiển thị trên nút đánh giá
+
+* Bỏ mốc cố định `<10m / 1d / 3d / 7d`. SM-2 không có bước học dưới 1 ngày, nên `<10m` không đúng với thuật toán.
+* Mỗi nút hiển thị **khoảng ôn thật** sẽ được lưu nếu bấm nút đó, tính từ trạng thái hiện tại của thẻ (`repetition_count`, `interval_days`, `ease_factor`).
+* Thứ tự tính trong `sm2_scheduler.py`: tính `EF_mới` theo $q$ trước, rồi dùng `EF_mới` để tính $I = 	ext{round}(I_{	ext{cũ}} 	imes EF_{	ext{mới}})$. Hàm xem trước và hàm cập nhật dùng chung một logic, nên số trên nút luôn bằng số được lưu.
+* API thẻ trả thêm `next_intervals` (số ngày) cho 4 nút: `{again, hard, good, easy}`. Việc xem trước không ghi vào CSDL.
+* Định dạng: dưới 30 ngày hiển thị `Nd`; từ 30 ngày trở lên hiển thị `Nmo` (làm tròn theo 30 ngày).
+* Ví dụ thẻ có $n = 2$, $I = 6$, $EF = 2.5$: Again `1d`, Hard `1d`, Good `14d`, Easy `16d`.
+* Lưu ý đã biết: theo công thức hiện tại Again ($q = 0$) và Hard ($q = 1$) đều là $q < 3$ nên cùng quay về 1 ngày, chỉ khác mức giảm EF (-0.80 và -0.54). Thẻ mới ($n = 0$) cả 4 nút đều ra `1d`; khác biệt chỉ rõ từ lần ôn thứ hai. Nếu thấy khó hiểu khi dùng thử, cân nhắc đổi ánh xạ thành Again = 0, Hard = 3, Good = 4, Easy = 5 ở v1.1.
