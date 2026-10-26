@@ -1,6 +1,6 @@
 # DevCoach AI - Nền tảng Luyện Phỏng vấn Kỹ thuật & Giao tiếp Tiếng Anh
 
-> **Mô tả dự án:** Hệ thống Full-stack tích hợp AI Engineering hỗ trợ sinh viên IT và lập trình viên tự luyện phỏng vấn chuyên môn (Backend/Frontend/System Design) sát với CV & JD thực tế, kết hợp chấm chữa kỹ năng Viết/Nói tiếng Anh (theo chuẩn IELTS & giao tiếp công sở) và tự động hóa ôn tập lỗi sai bằng thuật toán lặp lại ngắt quãng (Spaced Repetition SM-2).
+> **Mô tả dự án:** Hệ thống Full-stack tích hợp AI Engineering hỗ trợ sinh viên IT và lập trình viên tự luyện phỏng vấn chuyên môn (v1.0: Backend Java/Python; Frontend và System Design dự kiến v1.1) sát với CV & JD thực tế, kết hợp chấm chữa kỹ năng Viết/Nói tiếng Anh (theo chuẩn IELTS & giao tiếp công sở) và tự động hóa ôn tập lỗi sai bằng thuật toán lặp lại ngắt quãng (Spaced Repetition SM-2).
 
 ---
 
@@ -71,7 +71,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE user_profiles (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(100),
-    target_role VARCHAR(100) NOT NULL, -- VD: Java Backend Developer, React Frontend
+    target_role VARCHAR(100) NOT NULL, -- v1.0 chỉ nhận: Java Backend Intern, Python Backend Intern, Java/Python Backend Intern
     cv_text TEXT,                      -- Nội dung CV đã bóc tách từ file PDF
     english_target VARCHAR(50),        -- VD: IELTS 6.5+, Daily Standup Fluency
     streak_days INT DEFAULT 0,
@@ -303,7 +303,7 @@ volumes:
   * Viết service kết nối Gemini API với Pydantic Structured Outputs để chấm bài viết theo 4 tiêu chí.
   * Nối dữ liệu trả về vào giao diện Highlight lỗi sai trực tiếp và bảng nâng cấp từ vựng.
 * **Tuần 3 - Phân hệ Phỏng vấn Kỹ thuật & Hybrid RAG:**
-  * Viết script `seed_questions.py` nạp 50–100 câu hỏi phỏng vấn (Java, SQL, React, OOP, System Design) kèm Vector Embeddings vào bảng `question_bank`.
+  * Viết script `seed_questions.py` nạp 50–100 câu hỏi phỏng vấn (Java, Python, SQL, OOP; React và System Design để v1.1) kèm Vector Embeddings vào bảng `question_bank`.
   * Xây dựng luồng phỏng vấn tương tác có trạng thái (Stateful) và cơ chế tự động hỏi xoáy (Follow-up).
 * **Tuần 4 - Xử lý Giọng nói Đa phương thức (Audio & Speaking):**
   * Nối `MediaRecorder API` trên giao diện thu âm với endpoint `/api/v1/interviews/{id}/answer`.
@@ -314,3 +314,14 @@ volumes:
 * **Tuần 6 - Hoàn thiện, Tự động Sao lưu & Đóng gói:**
   * Viết script `backup_db.sh` tự động xuất dữ liệu cá nhân định kỳ.
   * Kiểm thử toàn trình, xử lý lỗi Rate Limit khi gọi API và hoàn thiện tài liệu hướng dẫn chạy dự án.
+
+---
+
+## 8. Quyết định chốt cho v1.0
+
+### 8.1. Phạm vi vai trò
+
+* v1.0 hỗ trợ đúng 3 vai trò, khớp README và màn hình thiết kế: **Java Backend Intern**, **Python Backend Intern**, **Java/Python Backend Intern**.
+* Frontend và System Design lùi sang v1.1. Lý do: ngân sách 50-100 câu hỏi của Tuần 3 không đủ phủ thêm 2 mảng, và chất lượng câu hỏi theo CV/JD quan trọng hơn độ rộng.
+* `target_role` vẫn là `VARCHAR(100)` để mở rộng sau này, nhưng giao diện chỉ cho chọn trong danh sách trên. Backend kiểm tra giá trị khi tạo phiên.
+* Bộ câu hỏi seed (Tuần 3) gồm Java, Python, SQL, OOP; bỏ React và System Design khỏi đợt seed đầu.
