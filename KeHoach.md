@@ -310,7 +310,7 @@ volumes:
   * Tích hợp truyền file âm thanh vào Gemini Multimodal để đánh giá phát âm, độ trôi chảy và nội dung trả lời; tích hợp Text-to-Speech đọc câu hỏi của AI.
 * **Tuần 5 - Hệ thống Flashcards SM-2 & Analytics Dashboard:**
   * Cài đặt thuật toán SM-2 trong `sm2_scheduler.py` và nối nút *"Lưu vào Flashcard"* từ màn hình chấm bài/phỏng vấn.
-  * Viết truy vấn SQL агреgation (`AVG`, `COUNT`, `GROUP BY` theo tuần) cung cấp dữ liệu thật cho biểu đồ Radar và Line Chart ở Dashboard.
+  * Viết truy vấn SQL aggregation (`AVG`, `COUNT`, `GROUP BY` theo tuần) cung cấp dữ liệu thật cho biểu đồ Radar và Line Chart ở Dashboard.
 * **Tuần 6 - Hoàn thiện, Tự động Sao lưu & Đóng gói:**
   * Viết script `backup_db.sh` tự động xuất dữ liệu cá nhân định kỳ.
   * Kiểm thử toàn trình, xử lý lỗi Rate Limit khi gọi API và hoàn thiện tài liệu hướng dẫn chạy dự án.
