@@ -2,7 +2,9 @@ from datetime import date, timedelta
 
 import pytest
 
+from app.api import routes_english
 from app.api.routes_english import get_coach
+from app.core.config import Settings
 from app.main import app
 from app.models import UserProfile, WritingSubmission
 from app.services.english_coach import EnglishCoach
@@ -64,6 +66,17 @@ def test_essay_too_long_is_rejected_without_calling_the_llm(client, llm):
 
     assert response.status_code == 422
     assert llm.calls == []
+
+
+def test_invalid_body_gets_422_even_when_gemini_key_is_missing(client, monkeypatch):
+    monkeypatch.setattr(routes_english, "get_settings", lambda: Settings(database_url="sqlite://", gemini_api_key=""))
+
+    short = client.post(f"{URL}/evaluate", json=body(user_essay="Too short."))
+    valid = client.post(f"{URL}/evaluate", json=body())
+
+    assert short.status_code == 422
+    assert valid.status_code == 503
+    assert valid.json()["error"]["code"] == "AI_NOT_CONFIGURED"
 
 
 def test_unknown_task_type_is_rejected(client, llm):

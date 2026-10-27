@@ -10,7 +10,9 @@ from app.core.database import get_db
 from app.core.errors import AppError
 from app.models import UserProfile, WritingSubmission
 from app.schemas.english import (
+    SubmissionType,
     WritingEvaluateRequest,
+    WritingEvaluation,
     WritingSubmissionOut,
     WritingSubmissionSummary,
 )
@@ -27,8 +29,15 @@ def ping() -> dict[str, str]:
     return {"router": "english", "status": "ok"}
 
 
+class _LazyCoach:
+    """Builds the real coach on first use, so a missing API key can't pre-empt request validation."""
+
+    def evaluate(self, text: str, submission_type: SubmissionType) -> WritingEvaluation:
+        return build_english_coach(get_settings()).evaluate(text, submission_type)
+
+
 def get_coach() -> EnglishCoach:
-    return build_english_coach(get_settings())
+    return _LazyCoach()  # type: ignore[return-value]
 
 
 def band_delta(db: Session, submission: WritingSubmission) -> float | None:
