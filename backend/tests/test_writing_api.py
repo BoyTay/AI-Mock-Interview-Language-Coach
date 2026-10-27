@@ -172,4 +172,3 @@ def test_gap_of_more_than_a_day_resets_streak(client, db_session, llm):
     client.post(f"{URL}/evaluate", json=body())
 
     assert profile(db_session).streak_days == 1
-
