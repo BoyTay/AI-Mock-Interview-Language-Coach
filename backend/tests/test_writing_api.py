@@ -1,8 +1,10 @@
+from datetime import date, timedelta
+
 import pytest
 
 from app.api.routes_english import get_coach
 from app.main import app
-from app.models import WritingSubmission
+from app.models import UserProfile, WritingSubmission
 from app.services.english_coach import EnglishCoach
 from tests.test_english_coach import ESSAY, ScriptedLlm, evaluation_payload
 
@@ -119,3 +121,42 @@ def test_history_lists_newest_first_with_deltas(client):
     assert [i["band_delta"] for i in items] == [0.5, None]
     assert "user_essay" not in items[0]
     assert items[0]["overall_band"] == 6.5
+
+
+def profile(db_session) -> UserProfile:
+    return db_session.query(UserProfile).one()
+
+
+def test_first_submission_starts_streak_at_one(client, db_session, llm):
+    client.post(f"{URL}/evaluate", json=body())
+
+    assert profile(db_session).streak_days == 1
+    assert profile(db_session).last_active_date == date.today()
+
+
+def test_second_submission_same_day_keeps_streak(client, db_session, llm):
+    client.post(f"{URL}/evaluate", json=body())
+    client.post(f"{URL}/evaluate", json=body())
+
+    assert profile(db_session).streak_days == 1
+
+
+def test_submission_the_day_after_extends_streak(client, db_session, llm):
+    p = profile(db_session)
+    p.streak_days, p.last_active_date = 4, date.today() - timedelta(days=1)
+    db_session.commit()
+
+    client.post(f"{URL}/evaluate", json=body())
+
+    assert profile(db_session).streak_days == 5
+
+
+def test_gap_of_more_than_a_day_resets_streak(client, db_session, llm):
+    p = profile(db_session)
+    p.streak_days, p.last_active_date = 9, date.today() - timedelta(days=3)
+    db_session.commit()
+
+    client.post(f"{URL}/evaluate", json=body())
+
+    assert profile(db_session).streak_days == 1
+

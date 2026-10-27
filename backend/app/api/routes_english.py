@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,6 +47,14 @@ def band_delta(db: Session, submission: WritingSubmission) -> float | None:
     return float(submission.overall_band - previous)
 
 
+def touch_streak(profile: UserProfile, today: date) -> None:
+    last = profile.last_active_date
+    if last == today:
+        return
+    profile.streak_days = (profile.streak_days or 0) + 1 if last == today - timedelta(days=1) else 1
+    profile.last_active_date = today
+
+
 def to_out(db: Session, submission: WritingSubmission) -> WritingSubmissionOut:
     return WritingSubmissionOut(
         id=submission.id,
@@ -82,6 +92,7 @@ def evaluate_writing(
         upgraded_vocab=[v.model_dump() for v in evaluation.upgraded_vocabulary],
     )
     db.add(submission)
+    touch_streak(profile, date.today())
     db.commit()
     db.refresh(submission)
     return to_out(db, submission)
