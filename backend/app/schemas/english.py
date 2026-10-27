@@ -1,6 +1,8 @@
+from datetime import datetime
 from enum import Enum
+from typing import Annotated
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 MAX_BAND = 9.0
 
@@ -52,3 +54,41 @@ class WritingEvaluation(BaseModel):
     upgraded_vocabulary: list[UpgradedVocabulary]
 
     _band = field_validator("overall_band")(_check_band)
+
+
+MIN_ESSAY_CHARS = 50
+MAX_ESSAY_CHARS = 5000
+MAX_TOPIC_CHARS = 500
+
+
+class WritingEvaluateRequest(BaseModel):
+    task_type: SubmissionType
+    prompt_topic: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TOPIC_CHARS)]
+    user_essay: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=MIN_ESSAY_CHARS, max_length=MAX_ESSAY_CHARS)
+    ]
+
+
+class WritingSubmissionOut(BaseModel):
+    id: int
+    task_type: str
+    prompt_topic: str
+    user_essay: str
+    word_count: int
+    overall_band: float
+    band_scores: dict
+    sentence_corrections: list[SentenceCorrection]
+    upgraded_vocab: list[UpgradedVocabulary]
+    # Change in overall band against the previous submission of the same task type.
+    band_delta: float | None
+    created_at: datetime
+
+
+class WritingSubmissionSummary(BaseModel):
+    id: int
+    task_type: str
+    prompt_topic: str
+    word_count: int
+    overall_band: float
+    band_delta: float | None
+    created_at: datetime
