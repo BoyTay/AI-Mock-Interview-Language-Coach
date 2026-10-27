@@ -29,6 +29,22 @@ def get_coach() -> EnglishCoach:
     return build_english_coach(get_settings())
 
 
+def band_delta(db: Session, submission: WritingSubmission) -> float | None:
+    previous = db.scalars(
+        select(WritingSubmission.overall_band)
+        .where(
+            WritingSubmission.user_id == submission.user_id,
+            WritingSubmission.task_type == submission.task_type,
+            WritingSubmission.id < submission.id,
+        )
+        .order_by(WritingSubmission.id.desc())
+        .limit(1)
+    ).first()
+    if previous is None:
+        return None
+    return float(submission.overall_band - previous)
+
+
 def to_out(db: Session, submission: WritingSubmission) -> WritingSubmissionOut:
     return WritingSubmissionOut(
         id=submission.id,
@@ -40,7 +56,7 @@ def to_out(db: Session, submission: WritingSubmission) -> WritingSubmissionOut:
         band_scores=submission.band_scores,
         sentence_corrections=submission.sentence_corrections or [],
         upgraded_vocab=submission.upgraded_vocab or [],
-        band_delta=None,
+        band_delta=band_delta(db, submission),
         created_at=submission.created_at,
     )
 
@@ -87,7 +103,7 @@ def list_writing(db: Session = Depends(get_db)) -> list[WritingSubmissionSummary
             prompt_topic=r.prompt_topic,
             word_count=r.word_count,
             overall_band=r.overall_band,
-            band_delta=None,
+            band_delta=band_delta(db, r),
             created_at=r.created_at,
         )
         for r in rows

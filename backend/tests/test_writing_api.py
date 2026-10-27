@@ -82,6 +82,16 @@ def script_bands(*bands: float) -> None:
     app.dependency_overrides[get_coach] = lambda: coach
 
 
+def test_band_delta_compares_with_previous_submission_of_same_task_type(client, llm):
+    script_bands(6.0, 7.0, 3.0)
+    client.post(f"{URL}/evaluate", json=body())
+    second = client.post(f"{URL}/evaluate", json=body()).json()
+    other_type = client.post(f"{URL}/evaluate", json=body(task_type="TECH_STANDUP")).json()
+
+    assert second["band_delta"] == 1.0
+    assert other_type["band_delta"] is None
+
+
 def test_get_submission_by_id(client, llm):
     created = client.post(f"{URL}/evaluate", json=body()).json()
 
@@ -106,5 +116,6 @@ def test_history_lists_newest_first_with_deltas(client):
     items = client.get(URL).json()
 
     assert [i["id"] for i in items] == [second["id"], first["id"]]
+    assert [i["band_delta"] for i in items] == [0.5, None]
     assert "user_essay" not in items[0]
     assert items[0]["overall_band"] == 6.5
