@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.errors import AppError
 from app.models import UserProfile, WritingSubmission
 from app.schemas.english import (
     WritingEvaluateRequest,
     WritingSubmissionOut,
+    WritingSubmissionSummary,
 )
 from app.services.english_coach import EnglishCoach, build_english_coach
+
+HISTORY_LIMIT = 50
 
 router = APIRouter(prefix="/english", tags=["english"])
 
@@ -63,4 +68,36 @@ def evaluate_writing(
     db.add(submission)
     db.commit()
     db.refresh(submission)
+    return to_out(db, submission)
+
+
+@router.get("/writing", response_model=list[WritingSubmissionSummary])
+def list_writing(db: Session = Depends(get_db)) -> list[WritingSubmissionSummary]:
+    profile = get_default_profile(db)
+    rows = db.scalars(
+        select(WritingSubmission)
+        .where(WritingSubmission.user_id == profile.id)
+        .order_by(WritingSubmission.id.desc())
+        .limit(HISTORY_LIMIT)
+    ).all()
+    return [
+        WritingSubmissionSummary(
+            id=r.id,
+            task_type=r.task_type,
+            prompt_topic=r.prompt_topic,
+            word_count=r.word_count,
+            overall_band=r.overall_band,
+            band_delta=None,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/writing/{submission_id}", response_model=WritingSubmissionOut)
+def get_writing(submission_id: int, db: Session = Depends(get_db)) -> WritingSubmissionOut:
+    profile = get_default_profile(db)
+    submission = db.get(WritingSubmission, submission_id)
+    if submission is None or submission.user_id != profile.id:
+        raise AppError(404, "SUBMISSION_NOT_FOUND", "Không tìm thấy bài nộp")
     return to_out(db, submission)

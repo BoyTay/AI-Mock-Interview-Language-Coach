@@ -75,3 +75,36 @@ def test_ai_failure_saves_nothing(client, db_session):
 
     assert response.status_code == 502
     assert db_session.query(WritingSubmission).count() == 0
+
+
+def script_bands(*bands: float) -> None:
+    coach = EnglishCoach(ScriptedLlm(*[evaluation_payload(overall_band=b) for b in bands]))
+    app.dependency_overrides[get_coach] = lambda: coach
+
+
+def test_get_submission_by_id(client, llm):
+    created = client.post(f"{URL}/evaluate", json=body()).json()
+
+    response = client.get(f"{URL}/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_get_unknown_submission_is_404(client):
+    response = client.get(f"{URL}/999")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SUBMISSION_NOT_FOUND"
+
+
+def test_history_lists_newest_first_with_deltas(client):
+    script_bands(6.0, 6.5)
+    first = client.post(f"{URL}/evaluate", json=body()).json()
+    second = client.post(f"{URL}/evaluate", json=body()).json()
+
+    items = client.get(URL).json()
+
+    assert [i["id"] for i in items] == [second["id"], first["id"]]
+    assert "user_essay" not in items[0]
+    assert items[0]["overall_band"] == 6.5
