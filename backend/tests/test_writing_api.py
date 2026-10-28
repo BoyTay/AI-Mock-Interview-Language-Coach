@@ -172,3 +172,27 @@ def test_gap_of_more_than_a_day_resets_streak(client, db_session, llm):
     client.post(f"{URL}/evaluate", json=body())
 
     assert profile(db_session).streak_days == 1
+
+
+def test_prompt_endpoint_returns_a_task2_prompt_with_limits(client):
+    response = client.get(f"{URL}/prompts", params={"task_type": "IELTS_TASK2"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["task_type"] == "IELTS_TASK2"
+    assert data["prompt"]
+    assert data["min_words"] == 250
+    assert data["max_words"] is None
+    assert data["suggested_minutes"] == 40
+
+
+def test_prompt_endpoint_returns_a_standup_prompt_with_limits(client):
+    data = client.get(f"{URL}/prompts", params={"task_type": "TECH_STANDUP"}).json()
+
+    assert data["task_type"] == "TECH_STANDUP"
+    assert (data["min_words"], data["max_words"], data["suggested_minutes"]) == (80, 120, 5)
+
+
+def test_prompt_endpoint_rejects_missing_or_unknown_task_type(client):
+    assert client.get(f"{URL}/prompts").status_code == 422
+    assert client.get(f"{URL}/prompts", params={"task_type": "NOPE"}).status_code == 422

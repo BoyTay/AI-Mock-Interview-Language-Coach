@@ -13,10 +13,12 @@ from app.schemas.english import (
     SubmissionType,
     WritingEvaluateRequest,
     WritingEvaluation,
+    WritingPromptOut,
     WritingSubmissionOut,
     WritingSubmissionSummary,
 )
 from app.services.english_coach import EnglishCoach, build_english_coach
+from app.services.writing_prompts import TASK_LIMITS, pick_prompt
 
 HISTORY_LIMIT = 50
 
@@ -105,6 +107,22 @@ def evaluate_writing(
     db.commit()
     db.refresh(submission)
     return to_out(db, submission)
+
+
+# Declared before /writing/{submission_id}, otherwise "prompts" is parsed as an id.
+@router.get("/writing/prompts", response_model=WritingPromptOut)
+def get_writing_prompt(task_type: SubmissionType) -> WritingPromptOut:
+    chosen = pick_prompt(task_type)
+    min_words, max_words, suggested_minutes = TASK_LIMITS[task_type]
+    return WritingPromptOut(
+        id=chosen.id,
+        task_type=chosen.task_type,
+        topic=chosen.topic,
+        prompt=chosen.prompt,
+        min_words=min_words,
+        max_words=max_words,
+        suggested_minutes=suggested_minutes,
+    )
 
 
 @router.get("/writing", response_model=list[WritingSubmissionSummary])

@@ -92,3 +92,13 @@ class WritingSubmissionSummary(BaseModel):
     overall_band: float
     band_delta: float | None
     created_at: datetime
+
+
+class WritingPromptOut(BaseModel):
+    id: str
+    task_type: SubmissionType
+    topic: str
+    prompt: str
+    min_words: int
+    max_words: int | None
+    suggested_minutes: int
