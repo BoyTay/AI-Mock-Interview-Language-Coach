@@ -1,4 +1,4 @@
-import { Check, FileText, RefreshCw, Sparkles, Timer } from 'lucide-react'
+import { Check, FileText, Loader2, RefreshCw, Sparkles, Timer } from 'lucide-react'
 import { useState } from 'react'
 import Accordion from '@/components/common/Accordion'
 import Card from '@/components/common/Card'
@@ -27,11 +27,22 @@ function promptNote({ min_words: min, max_words: max, suggested_minutes: minutes
   return `${length} Suggested time: ${minutes} minutes.`
 }
 
-export default function EditorPanel({ task, onTaskChange, essay, onEssayChange, draftSaved, promptState }) {
+export default function EditorPanel({
+  task,
+  onTaskChange,
+  essay,
+  onEssayChange,
+  draftSaved,
+  promptState,
+  onEvaluate,
+  evaluating,
+  evaluateError,
+}) {
   const { prompt, status } = promptState
   const [promptOpen, setPromptOpen] = useState(true)
   const minWords = prompt?.min_words ?? 0
   const words = countWords(essay)
+  const canEvaluate = Boolean(prompt) && words >= minWords && !evaluating
 
   return (
     <section aria-label="Editor" className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
@@ -146,12 +157,23 @@ export default function EditorPanel({ task, onTaskChange, essay, onEssayChange, 
           <div className="flex-1" />
           <button
             type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-700"
+            onClick={onEvaluate}
+            disabled={!canEvaluate}
+            className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600"
           >
-            <Sparkles className="size-4" aria-hidden="true" />
-            Evaluate with AI
+            {evaluating ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="size-4" aria-hidden="true" />
+            )}
+            {evaluating ? 'Evaluating...' : 'Evaluate with AI'}
           </button>
         </div>
+        {evaluateError && (
+          <p role="alert" className="m-0 border-t border-slate-800 bg-amber-500/10 px-[18px] py-3 text-sm text-amber-300">
+            {evaluateError}
+          </p>
+        )}
       </Card>
     </section>
   )
