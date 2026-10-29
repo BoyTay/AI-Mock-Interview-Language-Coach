@@ -17,12 +17,14 @@ export default function VocabularyUpgrader({ vocab, saved, onToggleSave }) {
                 C1
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-base font-semibold text-emerald-400">{v.c2}</span>
-              <Badge tone="s" className="h-[22px] text-[11px]">
-                C2
-              </Badge>
-            </div>
+            {v.c2 && (
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-base font-semibold text-emerald-400">{v.c2}</span>
+                <Badge tone="s" className="h-[22px] text-[11px]">
+                  C2
+                </Badge>
+              </div>
+            )}
           </div>
           <p className="m-0 text-[13px] leading-[1.6] text-slate-300">{v.example}</p>
           <div>
