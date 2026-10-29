@@ -24,9 +24,6 @@ export default function BandSummary({ overall, criteria }) {
         </div>
         <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-1.5">
           <span className="text-lg font-semibold text-slate-50">Overall Band Score</span>
-          <span className="text-[13px] leading-normal text-slate-400">
-            Good command of ideas and structure. Grammar accuracy and word choice hold the score back.
-          </span>
           <span className="text-xs font-medium text-emerald-400">{overall.delta}</span>
         </div>
       </div>
@@ -42,6 +39,7 @@ export default function BandSummary({ overall, criteria }) {
               <div className="h-2 overflow-hidden rounded bg-slate-800">
                 <div className={`h-full rounded ${FILL[color]}`} style={{ width: `${Math.round((c.band / 9) * 100)}%` }} />
               </div>
+              {c.feedback && <p className="m-0 text-xs leading-normal text-slate-400">{c.feedback}</p>}
             </li>
           )
         })}
