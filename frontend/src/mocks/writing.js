@@ -1,15 +1,4 @@
-// Sample data copied from design/Writing.dc.html. Replace with API calls later.
-
-export const prompts = {
-  ielts: [
-    'Some people believe that technology has made learning easier, while others think it distracts students from their studies. Discuss both views and give your own opinion.',
-    'Write at least 250 words. Suggested time: 40 minutes.',
-  ],
-  standup: [
-    'Give a short daily standup update: what you finished yesterday, what you will work on today, and any blockers. Use clear, professional English.',
-    'Write 80 to 120 words. Suggested time: 5 minutes.',
-  ],
-}
+// Sample feedback from design/Writing.dc.html, used as a fixture by the feedback panel tests.
 
 // The essay as a sequence of plain strings, paragraph breaks (null) and mistakes.
 // k: 'Grammar' | 'Vocabulary'; w: what the student wrote; f: the correction.
@@ -43,20 +32,6 @@ export const segments = [
   '. Schools should teach learners how to manage their time online, so that technology ',
   E(10, 'help', 'helps', 'Grammar', 'Subject-verb agreement', '"Technology" is singular here, so the verb is "helps".'),
   ' them rather than harm them. With clear rules and good habits, students can enjoy the advantages while avoiding the risks.',
-]
-
-// The student's original text: mistakes as written, null as a blank line.
-export function essayFromSegments(parts) {
-  return parts.map((x) => (x === null ? '\n\n' : typeof x === 'string' ? x : x.w)).join('')
-}
-
-export const overall = { band: 7.0, delta: '+0.5 vs your previous essay' }
-
-export const criteria = [
-  { name: 'Task Response', band: 7.0 },
-  { name: 'Coherence & Cohesion', band: 7.5 },
-  { name: 'Lexical Resource', band: 6.5 },
-  { name: 'Grammatical Range & Accuracy', band: 6.5 },
 ]
 
 export const vocab = [
