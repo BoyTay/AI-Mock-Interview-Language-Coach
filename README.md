@@ -2,7 +2,7 @@
 
 Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, dành cho sinh viên và lập trình viên Software Engineering.
 
-> Trạng thái hiện tại: đã có thiết kế giao diện, hạ tầng Docker, CSDL, khung FastAPI và frontend React với 4 màn hình (Dashboard, Mock Interview, English Writing Coach, Mistake Flashcards) chạy bằng dữ liệu mẫu trong `frontend/src/mocks/`. Chưa nối API thật.
+> Trạng thái hiện tại: đã có thiết kế giao diện, hạ tầng Docker, CSDL, khung FastAPI và frontend React với 4 màn hình (Dashboard, Mock Interview, English Writing Coach, Mistake Flashcards) chạy bằng dữ liệu mẫu trong `frontend/src/mocks/`. Riêng màn English Writing Coach đã nối API thật (đề, chấm điểm); các màn còn lại chưa nối.
 
 ## Mục tiêu
 
@@ -61,6 +61,7 @@ docker compose up -d --build
 
 - Frontend: http://localhost:5173, Backend: http://localhost:8000 (`/docs`, `/health`)
 - Chạy test frontend: `docker compose exec frontend npm test`
+- Màn English Writing Coach: đề lấy từ `GET /english/writing/prompts`, nút "New prompt" đổi đề, đồng hồ đếm ngược theo thời gian gợi ý của đề; bản nháp tự lưu vào `localStorage` (khoá `writing-draft:<task>`, sau 2 giây không gõ); nút "Evaluate with AI" bị vô hiệu khi chưa đủ số từ tối thiểu, lỗi mạng hoặc rate limit hiện thông báo và giữ nguyên bài viết
 - Sau khi đổi cấu hình Vite/Tailwind/PostCSS hoặc cài thêm thư viện, khởi động lại dev server: `docker compose restart frontend`
 - Áp migration CSDL: `docker compose exec backend alembic upgrade head`
 - Chạy test backend: `docker compose exec backend sh -c "pip install -q -r requirements-dev.txt && python -m pytest"` (test dùng SQLite trong bộ nhớ, không cần Postgres)
