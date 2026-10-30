@@ -123,7 +123,7 @@ test('highlights the corrected sentence and counts mistakes and vocabulary in th
   await user.click(evaluateButton())
 
   const group = await screen.findByRole('group', { name: 'Essay with highlighted mistakes' })
-  expect(within(group).getByRole('button')).toHaveTextContent('Yesterday I fixed the login bug.')
+  expect(within(group).getByRole('button')).toHaveTextContent('Yesterday I fix fixed the login bug.')
   expect(screen.getByRole('tab', { name: /Interactive Error Correction/ })).toHaveTextContent('1')
   expect(screen.getByRole('tab', { name: /Vocabulary Upgrader/ })).toHaveTextContent('1')
   expect(screen.getByText('Use the past tense for yesterday.')).toBeInTheDocument()

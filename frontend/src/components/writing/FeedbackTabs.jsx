@@ -11,11 +11,11 @@ const tabClass = (on) =>
     on ? 'border-indigo-500 text-slate-50' : 'border-transparent text-slate-400 hover:text-slate-200',
   )
 
-export default function FeedbackTabs({ segments, vocab }) {
+export default function FeedbackTabs({ segments, unplaced = [], vocab }) {
   const [tab, setTab] = useState('errors')
   // Saved vocabulary lives here so it survives switching tabs.
   const [saved, setSaved] = useState({})
-  const errorCount = segments.filter((s) => s && typeof s === 'object').length
+  const errorCount = segments.filter((s) => s && typeof s === 'object').length + unplaced.length
 
   return (
     <Card className="overflow-hidden">
@@ -51,7 +51,7 @@ export default function FeedbackTabs({ segments, vocab }) {
       </div>
       <div role="tabpanel" id="panel-feedback" aria-labelledby={tab === 'errors' ? 'tab-errors' : 'tab-vocab'}>
         {tab === 'errors' ? (
-          <ErrorCorrection segments={segments} />
+          <ErrorCorrection segments={segments} unplaced={unplaced} />
         ) : (
           <VocabularyUpgrader
             vocab={vocab}
