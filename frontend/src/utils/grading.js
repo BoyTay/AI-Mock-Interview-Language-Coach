@@ -1,3 +1,5 @@
+import { findSentence } from './match'
+
 const CRITERIA = [
   ['task_response', 'Task Response'],
   ['coherence_cohesion', 'Coherence & Cohesion'],
@@ -7,34 +9,51 @@ const CRITERIA = [
 
 const VOCABULARY_CATEGORY = /vocab|word|collocation|register|spelling/i
 
-// Splits the essay into plain text, paragraph breaks (null) and mistakes, the shape the feedback panel renders.
-export function toSegments(essay, corrections) {
-  const segments = []
-  let id = 0
-  essay.split(/\n\s*\n/).forEach((paragraph, p) => {
-    if (p > 0) segments.push(null)
-    const found = corrections
-      .map((c) => ({ c, at: paragraph.indexOf(c.original_sentence) }))
-      .filter(({ at }) => at >= 0)
-      .sort((a, b) => a.at - b.at)
+const toMistake = (id, written, c) => ({
+  id,
+  w: written,
+  f: c.corrected_sentence,
+  k: VOCABULARY_CATEGORY.test(c.error_category) ? 'Vocabulary' : 'Grammar',
+  title: c.error_category,
+  why: c.explanation,
+})
 
-    let cursor = 0
-    for (const { c, at } of found) {
-      if (at < cursor) continue
-      if (at > cursor) segments.push(paragraph.slice(cursor, at))
-      segments.push({
-        id: ++id,
-        w: c.original_sentence,
-        f: c.corrected_sentence,
-        k: VOCABULARY_CATEGORY.test(c.error_category) ? 'Vocabulary' : 'Grammar',
-        title: c.error_category,
-        why: c.explanation,
-      })
-      cursor = at + c.original_sentence.length
-    }
-    if (cursor < paragraph.length) segments.push(paragraph.slice(cursor))
+// Plain text becomes strings, with a null wherever a blank line separates paragraphs.
+function pushText(segments, text) {
+  text.split(/\n\s*\n/).forEach((part, i) => {
+    if (i > 0) segments.push(null)
+    if (part) segments.push(part)
   })
-  return segments
+}
+
+// Places each correction in the essay. `segments` is what the feedback panel renders (plain text,
+// paragraph breaks as null, mistakes); `unplaced` holds the corrections whose sentence could not be found.
+export function toSegments(essay, corrections) {
+  const used = []
+  const placed = []
+  const missing = []
+  for (const c of corrections) {
+    const range = findSentence(essay, c.original_sentence, used)
+    if (range) {
+      used.push(range)
+      placed.push({ c, range })
+    } else {
+      missing.push(c)
+    }
+  }
+  placed.sort((a, b) => a.range.start - b.range.start)
+
+  const segments = []
+  let cursor = 0
+  placed.forEach(({ c, range }, i) => {
+    pushText(segments, essay.slice(cursor, range.start))
+    segments.push(toMistake(i + 1, essay.slice(range.start, range.end), c))
+    cursor = range.end
+  })
+  pushText(segments, essay.slice(cursor))
+
+  const unplaced = missing.map((c, i) => toMistake(placed.length + i + 1, c.original_sentence, c))
+  return { segments, unplaced }
 }
 
 export function toCriteria(bandScores) {

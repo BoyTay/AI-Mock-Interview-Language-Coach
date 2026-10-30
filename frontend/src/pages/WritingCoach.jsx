@@ -13,7 +13,7 @@ function toGrading(result, essay) {
     id: result.id,
     overall: { band: result.overall_band, delta: bandDeltaText(result.band_delta) },
     criteria: toCriteria(result.band_scores),
-    segments: toSegments(essay, result.sentence_corrections),
+    ...toSegments(essay, result.sentence_corrections),
     vocab: toVocab(result.upgraded_vocab),
   }
 }
@@ -58,7 +58,7 @@ function WritingSession({ task, onTaskChange }) {
         {grading ? (
           <>
             <BandSummary overall={grading.overall} criteria={grading.criteria} />
-            <FeedbackTabs key={grading.id} segments={grading.segments} vocab={grading.vocab} />
+            <FeedbackTabs key={grading.id} segments={grading.segments} unplaced={grading.unplaced} vocab={grading.vocab} />
           </>
         ) : (
           <GradingPlaceholder />

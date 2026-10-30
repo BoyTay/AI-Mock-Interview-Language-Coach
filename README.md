@@ -62,6 +62,7 @@ docker compose up -d --build
 - Frontend: http://localhost:5173, Backend: http://localhost:8000 (`/docs`, `/health`)
 - Chạy test frontend: `docker compose exec frontend npm test`
 - Màn English Writing Coach: đề lấy từ `GET /english/writing/prompts`, nút "New prompt" đổi đề, đồng hồ đếm ngược theo thời gian gợi ý của đề; bản nháp tự lưu vào `localStorage` (khoá `writing-draft:<task>`, sau 2 giây không gõ); nút "Evaluate with AI" bị vô hiệu khi chưa đủ số từ tối thiểu, lỗi mạng hoặc rate limit hiện thông báo và giữ nguyên bài viết
+- Tô lỗi trong bài: `original_sentence` được tìm trong bài viết bỏ qua khác biệt khoảng trắng; trong câu đó chỉ các từ sai bị gạch ngang và từ sửa tô xanh (diff mức từ). Bấm vào cụm lỗi để xem loại lỗi (Grammar/Vocabulary) và giải thích. Câu không tìm thấy trong bài được liệt kê ở danh sách "Mistakes not found in your text" bên dưới, nên không có lỗi nào bị bỏ sót
 - Sau khi đổi cấu hình Vite/Tailwind/PostCSS hoặc cài thêm thư viện, khởi động lại dev server: `docker compose restart frontend`
 - Áp migration CSDL: `docker compose exec backend alembic upgrade head`
 - Chạy test backend: `docker compose exec backend sh -c "pip install -q -r requirements-dev.txt && python -m pytest"` (test dùng SQLite trong bộ nhớ, không cần Postgres)

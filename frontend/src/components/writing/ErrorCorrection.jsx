@@ -1,10 +1,23 @@
 import { ArrowRight, Check } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import Badge from '@/components/common/Badge'
 import { cn } from '@/lib/utils'
+import { diffWords } from '@/utils/diff'
 
-export default function ErrorCorrection({ segments }) {
-  const mistakes = segments.filter((s) => s && typeof s === 'object')
+// The wrong words struck through in rose and the words that replace them in green.
+function Diff({ mistake }) {
+  return diffWords(mistake.w, mistake.f).map((run, i) => (
+    <Fragment key={i}>
+      {i > 0 && ' '}
+      {run.type === 'same' && run.text}
+      {run.type === 'del' && <s className="text-rose-300 decoration-[1.5px]">{run.text}</s>}
+      {run.type === 'add' && <b className="font-semibold text-emerald-400">{run.text}</b>}
+    </Fragment>
+  ))
+}
+
+export default function ErrorCorrection({ segments, unplaced = [] }) {
+  const mistakes = [...segments.filter((s) => s && typeof s === 'object'), ...unplaced]
   const [selectedId, setSelectedId] = useState(mistakes[0]?.id)
   const current = mistakes.find((m) => m.id === selectedId) ?? mistakes[0]
 
@@ -54,12 +67,36 @@ export default function ErrorCorrection({ segments }) {
                 s.id === current.id && 'outline outline-2 outline-offset-1 outline-indigo-400',
               )}
             >
-              <s className="text-rose-300 decoration-[1.5px]">{s.w}</s>
-              <b className="ml-1.5 font-semibold text-emerald-400">{s.f}</b>
+              <Diff mistake={s} />
             </button>
           )
         })}
       </div>
+
+      {unplaced.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <span className="text-xs text-slate-400">
+            We could not find these sentences in your text, so they are listed here.
+          </span>
+          <ul aria-label="Mistakes not found in your text" className="m-0 flex list-none flex-col gap-2 p-0">
+            {unplaced.map((m) => (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  aria-pressed={m.id === current.id}
+                  onClick={() => setSelectedId(m.id)}
+                  className={cn(
+                    'rounded-[5px] bg-rose-500/20 px-2 py-1 text-left text-sm text-slate-200 hover:bg-rose-500/[.32]',
+                    m.id === current.id && 'outline outline-2 outline-offset-1 outline-indigo-400',
+                  )}
+                >
+                  <Diff mistake={m} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div
         role="region"
