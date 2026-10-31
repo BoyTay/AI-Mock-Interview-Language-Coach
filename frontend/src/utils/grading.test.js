@@ -108,9 +108,18 @@ test('toCriteria lists the four criteria with names, bands and feedback', () => 
 })
 
 test('toVocab maps the API fields to the card fields', () => {
-  expect(toVocab([{ basic_word: 'good', advanced_alternative: 'superb', context_example: 'A superb result.' }])).toEqual([
-    { basic: 'good', c1: 'superb', example: 'A superb result.' },
+  expect(
+    toVocab([
+      { basic_word: 'good', advanced_alternative: 'superb', c2_alternative: 'exemplary', context_example: 'A superb result.' },
+    ]),
+  ).toEqual([{ basic: 'good', c1: 'superb', c2: 'exemplary', example: 'A superb result.' }])
+})
+
+test('toVocab leaves C2 out for results saved before it existed', () => {
+  const [card] = toVocab([
+    { basic_word: 'good', advanced_alternative: 'superb', c2_alternative: null, context_example: 'A superb result.' },
   ])
+  expect(card.c2).toBeUndefined()
 })
 
 describe('bandDeltaText', () => {
