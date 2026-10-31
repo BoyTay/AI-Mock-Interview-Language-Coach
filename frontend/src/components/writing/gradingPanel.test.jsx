@@ -30,8 +30,8 @@ test('a vocabulary card without a C2 alternative shows only C1', () => {
   render(
     <VocabularyUpgrader
       vocab={[{ basic: 'good', c1: 'superb', example: 'A superb result.' }]}
-      saved={{}}
-      onToggleSave={() => {}}
+      saves={{}}
+      onSave={() => {}}
     />,
   )
   expect(screen.getByText('superb')).toBeInTheDocument()
