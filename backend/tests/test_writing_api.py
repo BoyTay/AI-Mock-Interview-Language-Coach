@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 import pytest
+from sqlalchemy import select
 
 from app.api import routes_english
 from app.api.routes_english import get_coach
@@ -37,6 +38,7 @@ def test_evaluate_saves_submission_and_returns_schema(client, db_session, llm):
     assert data["band_scores"]["task_response"]["score"] == 7.0
     assert data["sentence_corrections"][0]["error_category"] == "Subject-Verb Agreement"
     assert data["upgraded_vocab"][0]["advanced_alternative"].startswith("leverage")
+    assert data["upgraded_vocab"][0]["c2_alternative"].startswith("harness")
     assert data["band_delta"] is None
 
     row = db_session.get(WritingSubmission, data["id"])
@@ -196,3 +198,24 @@ def test_prompt_endpoint_returns_a_standup_prompt_with_limits(client):
 def test_prompt_endpoint_rejects_missing_or_unknown_task_type(client):
     assert client.get(f"{URL}/prompts").status_code == 422
     assert client.get(f"{URL}/prompts", params={"task_type": "NOPE"}).status_code == 422
+
+
+def test_submission_saved_before_c2_existed_is_still_readable(client, db_session):
+    old = WritingSubmission(
+        user_id=db_session.scalars(select(UserProfile.id)).first(),
+        task_type="IELTS_TASK2",
+        prompt_topic="Old topic",
+        user_essay="Old essay",
+        word_count=2,
+        overall_band=6.0,
+        band_scores={},
+        sentence_corrections=[],
+        upgraded_vocab=[{"basic_word": "good", "advanced_alternative": "superb", "context_example": "A superb idea."}],
+    )
+    db_session.add(old)
+    db_session.commit()
+
+    data = client.get(f"{URL}/{old.id}").json()
+
+    assert data["upgraded_vocab"][0]["advanced_alternative"] == "superb"
+    assert data["upgraded_vocab"][0]["c2_alternative"] is None
