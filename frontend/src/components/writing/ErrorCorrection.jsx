@@ -2,7 +2,9 @@ import { ArrowRight, Check } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import Badge from '@/components/common/Badge'
 import { cn } from '@/lib/utils'
+import { grammarCard } from '@/utils/cards'
 import { diffWords } from '@/utils/diff'
+import SaveButton from './SaveButton'
 
 // The wrong words struck through in rose and the words that replace them in green.
 function Diff({ mistake }) {
@@ -16,7 +18,7 @@ function Diff({ mistake }) {
   ))
 }
 
-export default function ErrorCorrection({ segments, unplaced = [] }) {
+export default function ErrorCorrection({ segments, unplaced = [], saves = {}, onSave }) {
   const mistakes = [...segments.filter((s) => s && typeof s === 'object'), ...unplaced]
   const [selectedId, setSelectedId] = useState(mistakes[0]?.id)
   const current = mistakes.find((m) => m.id === selectedId) ?? mistakes[0]
@@ -114,14 +116,7 @@ export default function ErrorCorrection({ segments, unplaced = [] }) {
           <span className="rounded-[5px] bg-emerald-500/[.14] px-2 py-[3px] text-emerald-400">{current.f}</span>
         </div>
         <p className="m-0 text-sm leading-[1.6] text-slate-300">{current.why}</p>
-        <div>
-          <button
-            type="button"
-            className="inline-flex h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-indigo-600 bg-indigo-600/[.14] px-3.5 text-[13px] font-semibold text-indigo-200 hover:bg-indigo-600/[.28]"
-          >
-            + Save to Flashcards
-          </button>
-        </div>
+        <SaveButton status={saves[`mistake:${current.id}`]} onClick={() => onSave(`mistake:${current.id}`, grammarCard(current))} />
       </div>
     </div>
   )

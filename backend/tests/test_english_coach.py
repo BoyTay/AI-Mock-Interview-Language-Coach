@@ -35,6 +35,7 @@ def evaluation_payload(**overrides) -> dict:
             {
                 "basic_word": "use AI for automate",
                 "advanced_alternative": "leverage AI to streamline and automate",
+                "c2_alternative": "harness AI to orchestrate end-to-end test automation",
                 "context_example": "Modern teams leverage AI to streamline deployment.",
             }
         ],
@@ -61,6 +62,25 @@ class ScriptedLlm:
 def coach_with(*responses) -> tuple[EnglishCoach, ScriptedLlm]:
     llm = ScriptedLlm(*responses)
     return EnglishCoach(llm), llm
+
+
+def test_vocabulary_without_a_c2_alternative_is_rejected_and_retried():
+    incomplete = evaluation_payload()
+    del incomplete["upgraded_vocabulary"][0]["c2_alternative"]
+    coach, llm = coach_with(incomplete, evaluation_payload())
+
+    result = coach.evaluate(ESSAY, SubmissionType.IELTS_TASK2)
+
+    assert result.upgraded_vocabulary[0].c2_alternative.startswith("harness")
+    assert len(llm.calls) == 2
+    assert "c2_alternative" in llm.calls[1][1]
+
+
+def test_prompt_asks_for_both_c1_and_c2_alternatives():
+    from app.services.english_prompts import system_prompt
+
+    prompt = system_prompt(SubmissionType.IELTS_TASK2)
+    assert "advanced_alternative" in prompt and "c2_alternative" in prompt
 
 
 def test_valid_response_is_parsed_into_evaluation():

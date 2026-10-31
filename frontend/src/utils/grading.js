@@ -61,7 +61,12 @@ export function toCriteria(bandScores) {
 }
 
 export function toVocab(upgraded) {
-  return upgraded.map((v) => ({ basic: v.basic_word, c1: v.advanced_alternative, example: v.context_example }))
+  return upgraded.map((v) => ({
+    basic: v.basic_word,
+    c1: v.advanced_alternative,
+    c2: v.c2_alternative ?? undefined,
+    example: v.context_example,
+  }))
 }
 
 export function bandDeltaText(delta) {

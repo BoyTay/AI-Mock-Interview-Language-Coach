@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createFlashcard } from '@/api/flashcards'
 import Badge from '@/components/common/Badge'
 import Card from '@/components/common/Card'
 import { cn } from '@/lib/utils'
@@ -13,8 +14,21 @@ const tabClass = (on) =>
 
 export default function FeedbackTabs({ segments, unplaced = [], vocab }) {
   const [tab, setTab] = useState('errors')
-  // Saved vocabulary lives here so it survives switching tabs.
-  const [saved, setSaved] = useState({})
+  // Save progress lives here so it survives switching tabs. key -> 'saving' | 'saved' | 'error'
+  const [saves, setSaves] = useState({})
+  const setStatus = (key, status) => setSaves((s) => ({ ...s, [key]: status }))
+
+  async function save(key, card) {
+    if (saves[key] === 'saving' || saves[key] === 'saved') return
+    setStatus(key, 'saving')
+    try {
+      await createFlashcard(card)
+      setStatus(key, 'saved')
+    } catch {
+      setStatus(key, 'error')
+    }
+  }
+
   const errorCount = segments.filter((s) => s && typeof s === 'object').length + unplaced.length
 
   return (
@@ -51,13 +65,9 @@ export default function FeedbackTabs({ segments, unplaced = [], vocab }) {
       </div>
       <div role="tabpanel" id="panel-feedback" aria-labelledby={tab === 'errors' ? 'tab-errors' : 'tab-vocab'}>
         {tab === 'errors' ? (
-          <ErrorCorrection segments={segments} unplaced={unplaced} />
+          <ErrorCorrection segments={segments} unplaced={unplaced} saves={saves} onSave={save} />
         ) : (
-          <VocabularyUpgrader
-            vocab={vocab}
-            saved={saved}
-            onToggleSave={(i) => setSaved((s) => ({ ...s, [i]: true }))}
-          />
+          <VocabularyUpgrader vocab={vocab} saves={saves} onSave={save} />
         )}
       </div>
     </Card>

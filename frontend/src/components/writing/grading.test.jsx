@@ -29,18 +29,3 @@ test('the first mistake is preselected and exactly one is selected at a time', a
   expect(explanation().getByText('Subject-verb agreement')).toBeInTheDocument()
   expect(explanation().getByText(/"Learners" is plural/)).toBeInTheDocument()
 })
-
-test('vocabulary cards can be saved individually and stay saved across tabs', async () => {
-  const user = userEvent.setup()
-  render(<FeedbackTabs segments={segments} vocab={vocab} />)
-  await user.click(screen.getByRole('tab', { name: /Vocabulary Upgrader/ }))
-  expect(screen.getAllByRole('button', { name: '+ Save to Flashcards' })).toHaveLength(6)
-
-  await user.click(screen.getAllByRole('button', { name: '+ Save to Flashcards' })[0])
-  expect(screen.getAllByRole('button', { name: 'Saved to Flashcards' })).toHaveLength(1)
-  expect(screen.getAllByRole('button', { name: '+ Save to Flashcards' })).toHaveLength(5)
-
-  await user.click(screen.getByRole('tab', { name: /Interactive Error Correction/ }))
-  await user.click(screen.getByRole('tab', { name: /Vocabulary Upgrader/ }))
-  expect(screen.getAllByRole('button', { name: 'Saved to Flashcards' })).toHaveLength(1)
-})

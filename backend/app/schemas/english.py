@@ -43,8 +43,14 @@ class SentenceCorrection(BaseModel):
 
 class UpgradedVocabulary(BaseModel):
     basic_word: str
-    advanced_alternative: str
+    advanced_alternative: str  # a C1 alternative
+    c2_alternative: str
     context_example: str
+
+
+class StoredUpgradedVocabulary(UpgradedVocabulary):
+    # Submissions saved before the C2 alternative existed have none.
+    c2_alternative: str | None = None
 
 
 class WritingEvaluation(BaseModel):
@@ -78,7 +84,7 @@ class WritingSubmissionOut(BaseModel):
     overall_band: float
     band_scores: dict
     sentence_corrections: list[SentenceCorrection]
-    upgraded_vocab: list[UpgradedVocabulary]
+    upgraded_vocab: list[StoredUpgradedVocabulary]
     # Change in overall band against the previous submission of the same task type.
     band_delta: float | None
     created_at: datetime
