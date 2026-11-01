@@ -301,6 +301,24 @@ def test_factory_builds_a_coach_for_the_configured_model():
     assert coach.llm.model == "gemini-test"
 
 
+def test_gemini_server_error_reaches_the_client_as_503_with_retry_after():
+    error = genai_errors.ServerError(503, {"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}})
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/overloaded")
+    def overloaded():
+        coach = EnglishCoach(GeminiLlm(FakeGenaiClient(error=error), model="gemini-test"))
+        return coach.evaluate(ESSAY, SubmissionType.IELTS_TASK2)
+
+    response = TestClient(app).get("/overloaded")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "AI_UNAVAILABLE"
+    assert int(response.headers["Retry-After"]) > 0
+    assert "high demand" not in response.text
+
+
 def test_prompts_carry_a_version_so_eval_results_can_be_traced_to_them():
     from app.services.english_prompts import PROMPT_VERSION
 

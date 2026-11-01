@@ -4,9 +4,12 @@ from http import HTTPStatus
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from google.genai import errors as genai_errors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("app.errors")
+
+AI_RETRY_AFTER_SECONDS = 30
 
 
 class AppError(Exception):
@@ -53,6 +56,17 @@ def register_error_handlers(app: FastAPI) -> None:
             for err in exc.errors()
         ]
         return error_response(422, "VALIDATION_ERROR", "Request validation failed", details)
+
+    @app.exception_handler(genai_errors.ServerError)
+    async def handle_ai_unavailable(_: Request, exc: genai_errors.ServerError):
+        # Gemini is overloaded or down (5xx). Not our bug and not worth a 500; the client can retry.
+        logger.warning("Gemini server error %s", exc.code)
+        return error_response(
+            503,
+            "AI_UNAVAILABLE",
+            "The AI service is temporarily unavailable. Try again shortly.",
+            headers={"Retry-After": str(AI_RETRY_AFTER_SECONDS)},
+        )
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(_: Request, exc: Exception):

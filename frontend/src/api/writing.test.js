@@ -46,6 +46,12 @@ test('a rate limit without Retry-After still gives a friendly message', () => {
   expect(describeError(httpError(429))).toMatch(/busy.*try again in a moment/i)
 })
 
+test('an unavailable AI service says it is temporarily down and the essay is safe', () => {
+  const message = describeError(httpError(503, { error: { code: 'AI_UNAVAILABLE' } }, { 'retry-after': '30' }))
+  expect(message).toMatch(/temporarily unavailable/i)
+  expect(message).toMatch(/essay is safe/i)
+})
+
 test('an unusable AI answer asks the user to retry', () => {
   expect(describeError(httpError(502, { error: { code: 'AI_INVALID_RESPONSE' } }))).toMatch(/try again/i)
 })

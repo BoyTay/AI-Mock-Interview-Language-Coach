@@ -30,6 +30,9 @@ export function describeError(error) {
       ? `The AI is busy right now. Please try again in ${wait} seconds.`
       : 'The AI is busy right now. Please try again in a moment.'
   }
+  if (response.status === 503) {
+    return 'The AI service is temporarily unavailable. Please try again in a moment. Your essay is safe.'
+  }
   if (response.status === 502) {
     return 'The AI returned an answer we could not read. Please try again.'
   }
