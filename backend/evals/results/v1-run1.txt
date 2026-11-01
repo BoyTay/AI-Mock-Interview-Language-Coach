@@ -1,0 +1,21 @@
+Prompt version 1 | model gemini-2.5-flash | 10 essays
+
+essay            ref   AI   gap  planted fixes no-op tries
+----------------------------------------------------------
+w01-band-5.0     5.0  5.0  +0.0      4/4     8     0     1
+w02-band-5.5     5.5  6.0  +0.5      4/4     6     0     1
+w03-band-6.0     6.0  6.0  +0.0      2/2     4     0     1
+w04-band-6.0     6.0  6.0  +0.0      2/3     4     0     1
+w05-band-6.5     6.5  6.5  +0.0      1/1     1     0     1
+w06-band-6.5     6.5  7.0  +0.5      2/2     2     0     1
+w07-band-7.0     7.0  7.0  +0.0      1/1     2     0     1
+w08-band-7.0     7.0  7.0  +0.0      1/1     3     0     1
+w09-band-7.5     7.5  7.5  +0.0      1/1     1     0     1
+w10-band-8.0     8.0  8.0  +0.0      1/1     2     0     1
+
+Mean absolute error: 0.10
+Mean bias: +0.10
+Planted errors flagged: 19/20
+No-op corrections: 0
+Essays needing a retry: 0 of 10
+Failed: 0 of 10
