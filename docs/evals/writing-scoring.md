@@ -54,6 +54,16 @@ Bài mẫu nằm ở `backend/evals/samples.py`, kết quả các lượt chạy
 - **Bịa lỗi:** 0 "sửa" không thay đổi gì. Chưa kiểm tra được lỗi bịa khác.
 - **Câu gốc không khớp:** 0 bài phải thử lại và 0 bài thất bại vì lý do này, nên kiểm tra nguyên văn trong `EnglishCoach` chưa bị kích hoạt trong bộ bài này.
 
+### So sánh với model khác (prompt v1, một lượt mỗi model)
+
+| Model | Sai số tuyệt đối TB | Độ lệch TB | Lỗi cài sẵn bắt được |
+|-------|--------------------:|-----------:|---------------------:|
+| gemini-2.5-flash (đang dùng) | 0.10 và 0.30 (hai lượt) | +0.10 và +0.00 | 19/20 |
+| gemini-3.5-flash | 1.30 | +1.30 | 19/20 |
+| gemini-2.5-pro | không chạy được | | key không gọi được model này (10/10 bài lỗi `ClientError`) |
+
+`gemini-3.5-flash` chấm cao hơn tham chiếu ở cả 10 bài (từ +0.5 đến +2.0), nên không phù hợp với prompt hiện tại. Kết quả nằm ở `backend/evals/results/v1-gemini-3.5-flash-run1.txt`. Đổi model qua biến `GEMINI_MODEL`; mỗi model có hạn mức riêng.
+
 ## Việc nên làm tiếp
 
 - Chạy lại prompt v2 khi còn hạn mức, ít nhất hai lượt, và chỉ áp dụng nếu sai số và độ lệch giữa các lượt tốt hơn v1.
