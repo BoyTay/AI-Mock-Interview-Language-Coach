@@ -299,3 +299,9 @@ def test_factory_builds_a_coach_for_the_configured_model():
 
     assert isinstance(coach, EnglishCoach)
     assert coach.llm.model == "gemini-test"
+
+
+def test_prompts_carry_a_version_so_eval_results_can_be_traced_to_them():
+    from app.services.english_prompts import PROMPT_VERSION
+
+    assert PROMPT_VERSION.strip()

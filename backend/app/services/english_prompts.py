@@ -1,5 +1,8 @@
 from app.schemas.english import SubmissionType
 
+# Bump when any prompt text below changes, and record the new eval result (docs/evals/writing-scoring.md).
+PROMPT_VERSION = "1"
+
 _OUTPUT_RULES = """\
 Reply with one JSON object that matches the response schema. No prose outside the JSON.
 
