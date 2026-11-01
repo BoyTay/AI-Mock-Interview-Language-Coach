@@ -317,3 +317,9 @@ def test_gemini_server_error_reaches_the_client_as_503_with_retry_after():
     assert response.json()["error"]["code"] == "AI_UNAVAILABLE"
     assert int(response.headers["Retry-After"]) > 0
     assert "high demand" not in response.text
+
+
+def test_prompts_carry_a_version_so_eval_results_can_be_traced_to_them():
+    from app.services.english_prompts import PROMPT_VERSION
+
+    assert PROMPT_VERSION.strip()
