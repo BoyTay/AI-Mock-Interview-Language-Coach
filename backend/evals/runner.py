@@ -1,12 +1,16 @@
 import time
 from collections.abc import Callable
 
+from google.genai import errors as genai_errors
+
 from app.core.errors import AppError
 from app.services.english_coach import EnglishCoach, Llm
 from evals.report import Result
 from evals.samples import Sample
 
 DEFAULT_DELAY_SECONDS = 2.0
+OVERLOAD_WAIT_SECONDS = 10
+MAX_OVERLOAD_RETRIES = 2
 
 
 class _CountingLlm:
@@ -21,16 +25,25 @@ class _CountingLlm:
 
 def _evaluate(sample: Sample, llm: _CountingLlm, sleep: Callable[[float], None]) -> Result:
     coach = EnglishCoach(llm)
-    waited = False
+    rate_limit_waited = False
+    overload_retries = 0
     while True:
         try:
             evaluation = coach.evaluate(sample.essay, sample.task_type)
         except AppError as exc:
-            if exc.code == "RATE_LIMITED" and not waited:
-                waited = True  # wait out the limit once, then try this essay again
+            if exc.code == "RATE_LIMITED" and not rate_limit_waited:
+                rate_limit_waited = True  # wait out the limit once, then try this essay again
                 sleep(float((exc.headers or {}).get("Retry-After", 30)))
                 continue
             return Result(sample, None, llm.calls, [], error=exc.code)
+        except genai_errors.ServerError as exc:
+            if overload_retries < MAX_OVERLOAD_RETRIES:
+                overload_retries += 1
+                sleep(OVERLOAD_WAIT_SECONDS)
+                continue
+            return Result(sample, None, llm.calls, [], error=f"UPSTREAM_{exc.code}")
+        except Exception as exc:  # one bad essay must not lose the rest of the run
+            return Result(sample, None, llm.calls, [], error=type(exc).__name__)
         return Result(sample, evaluation.overall_band, llm.calls, evaluation.sentence_corrections)
 
 

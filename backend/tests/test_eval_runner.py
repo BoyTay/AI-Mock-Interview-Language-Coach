@@ -1,5 +1,7 @@
 import json
 
+from google.genai import errors as genai_errors
+
 from app.services.english_coach import LlmRateLimitError
 from evals.runner import run_samples
 from evals.samples import SAMPLES
@@ -84,3 +86,36 @@ def test_pauses_between_samples_but_not_after_the_last():
     run_samples(TWO, llm, delay=3, sleep=sleeps.append)
 
     assert sleeps == [3]
+
+
+def overloaded() -> genai_errors.ServerError:
+    return genai_errors.ServerError(503, {"error": {"message": "overloaded", "status": "UNAVAILABLE"}})
+
+
+def test_an_overloaded_model_is_waited_out_and_retried():
+    sleeps = []
+    llm = FakeLlm(overloaded(), overloaded(), payload_for(TWO[0]))
+
+    results = run_samples(TWO[:1], llm, delay=0, sleep=sleeps.append)
+
+    assert results[0].band == 6.5
+    assert sleeps == [10, 10]
+
+
+def test_a_model_that_stays_down_is_recorded_as_a_failure_not_a_crash():
+    llm = FakeLlm(overloaded(), overloaded(), overloaded(), payload_for(TWO[1]))
+
+    results = run_samples(TWO, llm, delay=0, sleep=lambda s: None)
+
+    assert results[0].band is None
+    assert results[0].error == "UPSTREAM_503"
+    assert results[1].band == 6.5
+
+
+def test_any_other_unexpected_error_is_recorded_too():
+    llm = FakeLlm(RuntimeError("boom"), payload_for(TWO[1]))
+
+    results = run_samples(TWO, llm, delay=0)
+
+    assert results[0].error == "RuntimeError"
+    assert results[1].band == 6.5
