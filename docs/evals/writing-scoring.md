@@ -24,7 +24,7 @@ Bài mẫu nằm ở `backend/evals/samples.py`, kết quả các lượt chạy
 | Phiên bản | Trạng thái | Ghi chú |
 |-----------|------------|---------|
 | 1 | Đang dùng | Prompt ban đầu của `app/services/english_prompts.py` |
-| 2 (thử, không áp dụng) | Đã hoàn nguyên | Thêm mô tả neo cho band 5/6/7/8, yêu cầu bắt lỗi nhầm từ (then/than...), và đặt `sentence_corrections` trước điểm số trong schema. Chưa đo được: hạn mức Gemini cạn giữa chừng, chỉ chấm được 2/10 bài, không đủ để kết luận |
+| 2 (đã đo, không áp dụng) | Đã hoàn nguyên | Thêm mô tả neo cho band 5/6/7/8, yêu cầu bắt lỗi nhầm từ (then/than...), và đặt `sentence_corrections` trước điểm số trong schema. Đo hai lượt trên gemini-2.5-flash, kết quả không tốt hơn v1 (xem bên dưới) |
 
 `PROMPT_VERSION` trong `english_prompts.py` phải tăng khi sửa nội dung prompt, và kết quả mới phải ghi vào bảng này.
 
@@ -48,6 +48,19 @@ Bài mẫu nằm ở `backend/evals/samples.py`, kết quả các lượt chạy
 - **Tiêu chí hoàn thành (sai số trung bình không quá 0.5): đạt ở cả hai lượt** (trung bình hai lượt là 0.20).
 - **Độ ổn định kém hơn sai số trung bình gợi ý:** cùng một bài, hai lượt chạy có thể lệch tới 1.0 band (w03: 6.0 và 7.0; w10: 8.0 và 7.0). Với 10 bài và 2 lượt, không nên coi band của một lần chấm là chính xác hơn khoảng ±1.0.
 
+### Kết quả prompt v2 (gemini-2.5-flash, nhiệt độ 0.1)
+
+| | v1 lượt 1 | v1 lượt 2 | v2 lượt 1 | v2 lượt 2 |
+|---|---:|---:|---:|---:|
+| Sai số tuyệt đối trung bình | 0.10 | 0.30 | 0.50 | 0.40 |
+| Độ lệch trung bình (AI trừ tham chiếu) | +0.10 | +0.00 | +0.50 | +0.30 |
+| Lỗi cài sẵn bắt được | 19/20 | 19/20 | 19/20 | 19/20 |
+| Chênh lệch trung bình giữa hai lượt của cùng một bài | 0.40 | | 0.40 | |
+
+- v2 chấm cao hơn tham chiếu nhiều hơn v1 và không ổn định hơn, nên **không áp dụng**; `PROMPT_VERSION` giữ nguyên "1".
+- Lời nhắc bắt lỗi nhầm từ không giúp: `much more fun then` ở w04 vẫn bị bỏ sót.
+- Chỉ có 2 lượt mỗi prompt và bộ tham chiếu do người viết tự ước lượng, nên chênh lệch 0.2 đến 0.3 giữa các sai số trung bình nằm trong vùng nhiễu; kết luận đúng là "v2 không cho thấy cải thiện", không phải "v2 tệ hơn chắc chắn". Kết quả ở `backend/evals/results/v2-run1.txt` và `v2-run2.txt`.
+
 ### Lỗi hay gặp
 
 - **Bỏ sót lỗi:** bắt được 19/20 lỗi cài sẵn ở cả hai lượt. Lỗi bị bỏ sót cả hai lần là nhầm từ `much more fun then` (đúng là `than`) trong w04.
@@ -66,6 +79,6 @@ Bài mẫu nằm ở `backend/evals/samples.py`, kết quả các lượt chạy
 
 ## Việc nên làm tiếp
 
-- Chạy lại prompt v2 khi còn hạn mức, ít nhất hai lượt, và chỉ áp dụng nếu sai số và độ lệch giữa các lượt tốt hơn v1.
-- Nhờ người chấm IELTS thật cho điểm lại 10 bài để có tham chiếu độc lập.
-- Khi Gemini trả 5xx (đã gặp 503 "high demand" trong lúc chạy), API `POST /english/writing/evaluate` hiện chưa bắt lỗi này nên trả 500 `INTERNAL_ERROR`. Nên map sang 503 thân thiện và có thử lại.
+- Nhờ người chấm IELTS thật cho điểm lại 10 bài để có tham chiếu độc lập; đây là cách duy nhất để biết độ lệch dương +0.1 đến +0.5 là do AI hay do tham chiếu.
+- Muốn cải thiện việc bỏ sót lỗi nhầm từ, thử cách khác thay vì thêm một dòng nhắc, ví dụ bước kiểm tra riêng cho lỗi chính tả và nhầm từ.
+- Khi Gemini trả 5xx, API trả `503 AI_UNAVAILABLE` kèm `Retry-After` (PR #57). Server chưa tự thử lại.
