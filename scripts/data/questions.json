@@ -1,0 +1,482 @@
+[
+  {
+    "category": "JAVA",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between == and equals() in Java?",
+    "reference_answer": "== compares primitives by value and objects by reference identity (whether both variables point to the same object). equals() is a method on Object that is meant to compare logical equality; its default implementation is the same as ==, but classes such as String, Integer and List override it to compare content. When overriding equals() you must also override hashCode() so that equal objects produce equal hash codes."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between an abstract class and an interface in Java?",
+    "reference_answer": "An abstract class can hold state (instance fields), constructors and both abstract and concrete methods, and a class can extend only one. An interface defines a contract; since Java 8 it can also have default and static methods, but it has no instance state, and a class can implement many interfaces. Use an abstract class to share code and state among closely related classes, and an interface to define a capability that unrelated classes can implement."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "JUNIOR",
+    "question_text": "Why is String immutable in Java, and what are the benefits?",
+    "reference_answer": "Once a String object is created its content cannot change; operations like concat() return a new object. Immutability makes Strings inherently thread-safe, allows safe caching of the hash code (good for HashMap keys), enables the String pool to share instances, and improves security because values such as class names, file paths or connection URLs cannot be altered after validation."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between ArrayList and LinkedList?",
+    "reference_answer": "ArrayList is backed by a resizable array: random access by index is O(1), appending is amortized O(1), but inserting or removing in the middle is O(n) because elements shift. LinkedList is a doubly linked list: insertion or removal at a known node is O(1), but access by index is O(n) and each element carries extra memory for pointers. In practice ArrayList is the better default because of cache locality; LinkedList is rarely the right choice."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "How does HashMap work internally in Java?",
+    "reference_answer": "HashMap stores entries in an array of buckets. The key's hashCode() is spread and reduced to an index; colliding entries are chained in a linked list, which Java 8 converts to a balanced tree when a bucket exceeds 8 entries (and the table is large enough). get() finds the bucket, then uses equals() to locate the key. When the size exceeds capacity times load factor (default 0.75) the table doubles and entries are rehashed. Average get/put is O(1); it is not thread-safe."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "What is the difference between checked and unchecked exceptions, and when would you use each?",
+    "reference_answer": "Checked exceptions (subclasses of Exception but not RuntimeException) must be declared or caught at compile time; they represent recoverable conditions the caller can reasonably handle, such as IOException. Unchecked exceptions (RuntimeException and Error) are not enforced by the compiler; they usually signal programming errors such as NullPointerException or IllegalArgumentException. Use checked exceptions sparingly for recoverable failures at API boundaries and unchecked ones for programmer errors; many modern frameworks prefer unchecked exceptions to avoid cluttering signatures."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "Explain the synchronized keyword and the difference between synchronized and volatile.",
+    "reference_answer": "synchronized provides mutual exclusion (only one thread holds the monitor lock at a time) and also guarantees visibility: changes made inside the block are visible to the next thread that acquires the same lock. volatile only guarantees visibility and ordering of reads and writes to a single variable; it does not make compound actions such as count++ atomic. Use synchronized or java.util.concurrent atomics/locks for compound operations, and volatile for simple flags written by one thread and read by others."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "How does garbage collection work in the JVM, and what are the generations of the heap?",
+    "reference_answer": "The JVM automatically reclaims memory of objects that are no longer reachable from GC roots. The heap is generational because most objects die young: new objects are allocated in the young generation (Eden plus survivor spaces) and collected by frequent, cheap minor GCs; objects that survive several cycles are promoted to the old generation, which is collected less often by major or full GCs. Collectors such as G1 and ZGC differ in pause-time and throughput trade-offs. Memory leaks in Java usually come from lingering references, for example in static collections or caches."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "What are Java Streams, and what is the difference between intermediate and terminal operations?",
+    "reference_answer": "A Stream is a sequence of elements that supports declarative, pipelined processing such as filter, map and reduce without modifying the source. Intermediate operations (filter, map, sorted) are lazy and return another Stream; nothing runs until a terminal operation (collect, forEach, count, reduce) is invoked, which consumes the stream. A stream can be consumed only once. parallelStream() can speed up CPU-bound work on large data but should be used carefully because of shared-state and overhead issues."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "What is the difference between HashMap and ConcurrentHashMap?",
+    "reference_answer": "HashMap is not thread-safe; concurrent modification can corrupt it or cause lost updates. ConcurrentHashMap is designed for concurrent use: reads are mostly lock-free and writes lock only a small part of the table (CAS and per-bin synchronization in Java 8+), so multiple threads can update different buckets in parallel. It does not allow null keys or values and provides atomic operations like putIfAbsent, compute and merge. It is preferred over Collections.synchronizedMap, which locks the whole map."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "MID",
+    "question_text": "What is the difference between Runnable, Callable and Future, and how does ExecutorService relate to them?",
+    "reference_answer": "Runnable represents a task that returns nothing and cannot throw checked exceptions. Callable<V> returns a result and may throw checked exceptions. Submitting a Callable to an ExecutorService returns a Future<V>, which lets you check completion, wait for the result with get() (which blocks) or cancel the task. ExecutorService manages a thread pool so you reuse threads instead of creating one per task. CompletableFuture builds on this to allow non-blocking composition of asynchronous steps."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "SENIOR",
+    "question_text": "What is the Java Memory Model and what does the happens-before relationship guarantee?",
+    "reference_answer": "The Java Memory Model defines how threads interact through memory and when writes by one thread are guaranteed to be visible to another, allowing compilers and CPUs to reorder instructions as long as these guarantees hold. Happens-before is the ordering rule: if action A happens-before action B, then A's effects are visible to B. Examples include an unlock before a subsequent lock of the same monitor, a volatile write before a later volatile read of the same variable, Thread.start() before actions in the started thread, and thread termination before join() returns. Without such an edge, data races can lead to stale or inconsistent reads."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "SENIOR",
+    "question_text": "How would you diagnose and fix a memory leak in a production Java service?",
+    "reference_answer": "First confirm the symptom: heap usage in the old generation keeps growing after full GCs and eventually causes OutOfMemoryError or long GC pauses (monitor with GC logs, JMX or APM metrics). Capture a heap dump (jmap, or -XX:+HeapDumpOnOutOfMemoryError) and analyze it with Eclipse MAT or VisualVM to find the dominator objects and the reference chain keeping them alive. Common causes are unbounded caches or static collections, unremoved listeners, ThreadLocals in pooled threads, and unclosed resources. Fix the retention (bounded or weak-reference caches, proper cleanup), then verify with a load test that heap stabilizes."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "SENIOR",
+    "question_text": "What are the differences between the G1 and ZGC garbage collectors, and how would you choose between them?",
+    "reference_answer": "G1 divides the heap into regions and collects the ones with the most garbage first, aiming to meet a configurable pause-time target while keeping good throughput; it is the default in modern JDKs and suits most services. ZGC is a concurrent, region-based collector that performs almost all work while the application runs, keeping pauses in the sub-millisecond to few-millisecond range regardless of heap size, at the cost of some extra CPU and memory overhead. Choose G1 for general workloads and balanced throughput; choose ZGC for very large heaps or latency-sensitive services where pause times must stay tiny. Always decide with measurements under realistic load."
+  },
+  {
+    "category": "JAVA",
+    "difficulty": "SENIOR",
+    "question_text": "Explain how Spring's dependency injection works and how @Transactional can silently fail to apply.",
+    "reference_answer": "The Spring container creates beans and injects their dependencies (preferably through constructors) instead of classes creating them, which decouples code and makes it testable. @Transactional is implemented with proxies (AOP): the proxy starts a transaction before the method and commits or rolls back afterwards. It silently does not apply when a method is called from within the same class (self-invocation bypasses the proxy), when the method is private or final, when the bean is not managed by Spring, or when a checked exception is thrown, because by default rollback happens only for unchecked exceptions. The fix is to call through another bean, adjust visibility, or set rollbackFor."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between INNER JOIN, LEFT JOIN and FULL OUTER JOIN?",
+    "reference_answer": "INNER JOIN returns only the rows that have a match in both tables. LEFT JOIN returns all rows from the left table plus matching rows from the right, filling right-side columns with NULL when there is no match. FULL OUTER JOIN returns all rows from both tables, with NULLs wherever one side has no match. A common use of LEFT JOIN is finding rows with no related record by filtering on the right table's key IS NULL."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between WHERE and HAVING?",
+    "reference_answer": "WHERE filters individual rows before grouping and aggregation, so it cannot reference aggregate functions. HAVING filters groups after GROUP BY, so it can use aggregates such as COUNT(*) or SUM(amount). For performance, put conditions that do not depend on aggregates in WHERE so fewer rows are grouped. Example: SELECT dept, COUNT(*) FROM employees WHERE active = true GROUP BY dept HAVING COUNT(*) > 5."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between a primary key and a unique key?",
+    "reference_answer": "A primary key uniquely identifies each row, cannot be NULL, and a table can have only one. A unique constraint also enforces uniqueness but a table can have several, and most databases allow NULL in a unique column (the handling of multiple NULLs varies by vendor). The primary key is typically the target of foreign keys and gets a clustered index in some engines, while unique keys are used for alternate identifiers such as email."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between DELETE, TRUNCATE and DROP?",
+    "reference_answer": "DELETE removes rows that match an optional WHERE clause, is logged row by row, fires row-level triggers and can be rolled back. TRUNCATE removes all rows quickly by deallocating data pages, resets identity counters in most engines, and usually cannot be filtered; whether it can be rolled back depends on the database. DROP removes the whole table, including its structure, indexes and constraints. DELETE and TRUNCATE keep the table definition."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "What is a database index, and what are the trade-offs of adding one?",
+    "reference_answer": "An index is an auxiliary data structure, usually a B-tree, that lets the database locate rows by column values without scanning the whole table, turning O(n) lookups into O(log n). The trade-offs are extra storage and slower INSERT, UPDATE and DELETE because every index must be maintained. Index columns used often in WHERE, JOIN and ORDER BY clauses, with high selectivity; avoid indexing tiny tables or low-cardinality columns. Composite indexes follow the leftmost-prefix rule, so column order matters. Verify the effect with EXPLAIN."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "Write a query to find the second highest salary in an employees table, and explain alternatives.",
+    "reference_answer": "One portable answer: SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees); this returns NULL if there is no second value. With window functions: SELECT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk FROM employees) t WHERE rnk = 2 LIMIT 1; DENSE_RANK handles ties correctly, while ROW_NUMBER would not. Another option is ORDER BY salary DESC with DISTINCT and OFFSET 1 LIMIT 1. The window-function version generalizes best to the Nth highest and per-department variants."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "Explain the ACID properties of a transaction.",
+    "reference_answer": "Atomicity: a transaction is all-or-nothing; if any step fails, all changes are rolled back. Consistency: a transaction moves the database from one valid state to another, respecting constraints and rules. Isolation: concurrent transactions do not see each other's uncommitted intermediate state, to a degree defined by the isolation level. Durability: once committed, changes survive crashes, typically through write-ahead logging. A bank transfer is the classic example: debit and credit must both happen or neither."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "What are the transaction isolation levels and which anomalies does each prevent?",
+    "reference_answer": "READ UNCOMMITTED allows dirty reads. READ COMMITTED prevents dirty reads but allows non-repeatable reads and phantoms. REPEATABLE READ prevents dirty and non-repeatable reads, and may still allow phantom rows depending on the engine (MySQL InnoDB largely prevents them with gap locks; PostgreSQL uses snapshot isolation). SERIALIZABLE prevents all of these by making transactions behave as if they ran one after another, at the cost of more blocking or retries. Higher levels reduce anomalies but also reduce concurrency, so choose the lowest level that is correct for the use case."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "What is the difference between a window function and GROUP BY? Give an example.",
+    "reference_answer": "GROUP BY collapses rows into one row per group, so you lose the row-level detail. A window function computes an aggregate or ranking over a set of related rows (the OVER clause with PARTITION BY and ORDER BY) while keeping every input row. Example: SELECT name, dept, salary, AVG(salary) OVER (PARTITION BY dept) AS dept_avg, RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS rank_in_dept FROM employees; this shows each employee next to the department average and their rank."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "What is database normalization, and when might you intentionally denormalize?",
+    "reference_answer": "Normalization organizes data to reduce redundancy and update anomalies: 1NF requires atomic values, 2NF removes partial dependencies on part of a composite key, and 3NF removes transitive dependencies so non-key columns depend only on the key. The result is more tables and joins but consistent data. Denormalization deliberately duplicates data, for example storing a precomputed total or copying a customer name onto an order, to speed up read-heavy queries or reporting. The cost is extra work and risk of inconsistency on writes, so it should be driven by measured performance needs."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "MID",
+    "question_text": "How would you find duplicate email addresses in a users table and delete the duplicates, keeping the oldest row?",
+    "reference_answer": "To find them: SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1. To delete while keeping the oldest row by id: DELETE FROM users WHERE id NOT IN (SELECT MIN(id) FROM users GROUP BY email); in MySQL wrap the subquery in a derived table, and in PostgreSQL you can use DELETE ... USING or a ROW_NUMBER() CTE and delete rows with row_number > 1. Afterwards add a UNIQUE constraint on email to prevent recurrence, and take a backup or run inside a transaction first."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "SENIOR",
+    "question_text": "A query is slow in production. How do you investigate and optimize it?",
+    "reference_answer": "Start by capturing the exact query and parameters, then run EXPLAIN (ANALYZE) to see the execution plan: look for full table scans, wrong join order or algorithm, large row-estimate mismatches, and expensive sorts. Check whether suitable indexes exist and are used (watch for functions on indexed columns or implicit type casts that prevent index use), make sure statistics are up to date, and rewrite the query to reduce rows early or avoid SELECT *. Consider covering or composite indexes, pagination by keyset instead of OFFSET, or caching and pre-aggregation. Measure before and after, and check lock contention and I/O if the plan itself looks fine."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "SENIOR",
+    "question_text": "Explain how MVCC works and how it affects readers and writers.",
+    "reference_answer": "Multi-version concurrency control keeps multiple versions of a row so that readers see a consistent snapshot while writers create new versions, instead of readers blocking writers or the reverse. In PostgreSQL each row version has transaction ids that determine visibility, and old versions are cleaned up by VACUUM; in InnoDB old versions are kept in undo logs. The benefit is high concurrency with reads that never block writes. Drawbacks include bloat or long undo chains from long-running transactions, and write-write conflicts that still need locks or serialization failures that the application must retry."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "SENIOR",
+    "question_text": "How do you design and scale a database for a read-heavy workload?",
+    "reference_answer": "First optimize the basics: correct indexes, query tuning and connection pooling. Add a cache (for example Redis) for hot data with a clear invalidation strategy. Scale reads with read replicas, accepting replication lag, so the application must tolerate slightly stale reads or route read-your-writes traffic to the primary. For very large datasets consider partitioning or sharding by a key that spreads load, and materialized views or precomputed aggregates for expensive reports. Each step adds operational complexity, so apply them in order of need and monitor the impact."
+  },
+  {
+    "category": "SQL",
+    "difficulty": "JUNIOR",
+    "question_text": "What is a foreign key, and what happens when you delete a parent row that is referenced by child rows?",
+    "reference_answer": "A foreign key is a column (or set of columns) in one table that references the primary key of another, enforcing referential integrity so child rows cannot point to a non-existent parent. When a referenced parent row is deleted, the behavior depends on the ON DELETE rule: RESTRICT or NO ACTION rejects the delete, CASCADE deletes the child rows too, SET NULL clears the foreign key in the children, and SET DEFAULT assigns a default value. Choose the rule based on business meaning, and be careful with CASCADE because it can remove large amounts of data."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between a list and a tuple in Python?",
+    "reference_answer": "Lists are mutable: you can add, remove or change elements after creation. Tuples are immutable, so they cannot be changed once created, which makes them hashable if all their elements are hashable and therefore usable as dictionary keys or set members. Tuples are also slightly lighter and signal fixed-structure data such as coordinates, while lists suit homogeneous collections that change. Both are ordered and allow duplicates."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "JUNIOR",
+    "question_text": "What is a list comprehension and when would you use a generator expression instead?",
+    "reference_answer": "A list comprehension builds a list in a concise way, for example [x * x for x in nums if x % 2 == 0]. A generator expression uses parentheses, (x * x for x in nums), and produces items lazily one at a time without creating the whole list in memory. Use a generator expression when you only iterate once or the data is large, for example sum(x * x for x in nums); use a list when you need indexing, length or multiple passes."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "JUNIOR",
+    "question_text": "What does the mutable default argument problem look like in Python, and how do you avoid it?",
+    "reference_answer": "Default argument values are evaluated once, when the function is defined, not on each call. If the default is a mutable object such as a list, def add(item, items=[]): items.append(item), then the same list is shared across calls and keeps growing. The standard fix is to use None as the default and create a new object inside the function: if items is None: items = []."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "MID",
+    "question_text": "What are decorators in Python and how do you write one that preserves function metadata?",
+    "reference_answer": "A decorator is a callable that takes a function and returns a replacement, usually wrapping it to add behavior such as logging, timing, caching or authorization; @deco above def f is shorthand for f = deco(f). A typical implementation defines an inner wrapper(*args, **kwargs) that calls the original function and returns its result. Apply functools.wraps(func) to the wrapper so the original name, docstring and signature metadata are preserved. Decorators that take arguments need one more level of nesting."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "MID",
+    "question_text": "Explain the Global Interpreter Lock (GIL) and how it affects concurrency in Python.",
+    "reference_answer": "In CPython the GIL is a mutex that allows only one thread to execute Python bytecode at a time, which simplifies memory management but means threads cannot run CPU-bound Python code in parallel. Threads still help for I/O-bound work because the GIL is released while waiting on I/O. For CPU-bound work use multiprocessing or process pools, or native extensions (NumPy) that release the GIL; asyncio gives efficient single-threaded concurrency for many I/O tasks. Recent Python versions have an experimental free-threaded build that removes the GIL."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "MID",
+    "question_text": "What is the difference between __str__ and __repr__, and what are dunder methods?",
+    "reference_answer": "Dunder (double underscore) methods let classes hook into language behavior, such as __init__, __len__, __eq__ or __iter__. __repr__ should return an unambiguous, developer-oriented representation, ideally one that could recreate the object, and is used by the REPL and debugging tools. __str__ returns a readable, user-friendly string used by print() and str(). If only __repr__ is defined, it is used as a fallback for str(), so implement __repr__ first."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "MID",
+    "question_text": "How does async/await work in Python and when is it appropriate?",
+    "reference_answer": "async def defines a coroutine; await suspends it until an awaitable completes, letting the asyncio event loop run other coroutines in the meantime on a single thread. It is well suited to I/O-bound workloads with many concurrent operations, such as HTTP calls or database queries, since waiting does not block other tasks. It does not speed up CPU-bound code, and a blocking call (time.sleep, a synchronous library) inside a coroutine stalls the whole loop; run such code in an executor. Use asyncio.gather or TaskGroup to run tasks concurrently."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "MID",
+    "question_text": "What is the difference between shallow copy and deep copy in Python?",
+    "reference_answer": "A shallow copy (copy.copy, list.copy(), slicing) creates a new container but fills it with references to the same inner objects, so mutating a nested object affects both copies. A deep copy (copy.deepcopy) recursively copies nested objects so the two structures are fully independent. Shallow copies are cheaper and fine for flat structures of immutable items; use deep copy for nested mutable data, keeping in mind the cost and issues with objects that hold resources."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "SENIOR",
+    "question_text": "How does Python manage memory, and how can you find a memory leak?",
+    "reference_answer": "CPython uses reference counting as the primary mechanism, freeing an object when its count reaches zero, plus a cyclic garbage collector for reference cycles. Small objects are served by pymalloc arenas. Leaks usually come from lingering references, such as global caches, closures, unremoved callbacks or cycles with __del__. Diagnose with tracemalloc snapshots to compare allocations over time, objgraph or gc.get_objects() to find growing object types, and memory profilers; fix by bounding caches, using weak references, and releasing resources explicitly with context managers."
+  },
+  {
+    "category": "PYTHON",
+    "difficulty": "SENIOR",
+    "question_text": "How would you design a FastAPI service so that it stays responsive under load when calling a slow external API?",
+    "reference_answer": "Use async endpoints with an async HTTP client (httpx.AsyncClient) so waiting on the external call does not block the event loop, and reuse the client with connection pooling. Set explicit timeouts, retries with exponential backoff and jitter, and a circuit breaker or fallback for repeated failures. Limit concurrency with a semaphore to protect both services, cache responses when valid, and move long operations to a background queue (for example Celery or a task worker) returning a job id when users do not need an immediate answer. Surface failures as clear 503 responses and monitor latency and error rates."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the virtual DOM and why does React use it?",
+    "reference_answer": "The virtual DOM is a lightweight in-memory representation of the UI as a tree of JavaScript objects. When state changes React renders a new virtual tree, compares it with the previous one (reconciliation/diffing), and applies only the minimal set of changes to the real DOM. This keeps updates efficient and lets developers describe the UI declaratively instead of manipulating the DOM by hand. Keys on list items help React match elements between renders."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between props and state?",
+    "reference_answer": "Props are inputs passed from a parent component to a child; they are read-only from the child's perspective. State is data owned and managed inside a component (with useState) that can change over time and triggers a re-render when updated. Data flows down through props, and children communicate up by calling callback props. If several components need the same data, lift the state up to their closest common parent."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "JUNIOR",
+    "question_text": "Why do we need the key prop when rendering lists?",
+    "reference_answer": "Keys give React a stable identity for each list item so reconciliation can tell which items were added, removed or reordered, preserving component state and avoiding unnecessary DOM work. Keys must be unique among siblings and stable across renders, ideally an id from the data. Using the array index is problematic when the list can be reordered, inserted into or filtered, since state may attach to the wrong item."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "MID",
+    "question_text": "How does useEffect work and what is the purpose of its dependency array?",
+    "reference_answer": "useEffect runs side effects (data fetching, subscriptions, timers, manual DOM work) after React renders. The dependency array controls when it re-runs: with no array it runs after every render, with an empty array only after the first mount, and with values it runs when any of them change. The function may return a cleanup that runs before the next effect and on unmount, used to cancel subscriptions or abort requests. Missing dependencies cause stale closures, so include everything the effect uses."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "MID",
+    "question_text": "When would you use useMemo, useCallback and React.memo, and what are the risks of overusing them?",
+    "reference_answer": "React.memo skips re-rendering a component when its props are shallowly equal. useMemo caches an expensive computed value, and useCallback caches a function identity so memoized children or effect dependencies do not see a new reference on each render. Use them after measuring a real performance problem, such as expensive calculations or large lists. Overuse adds code complexity and memory and comparison overhead, and they are ineffective if dependencies change every render."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "MID",
+    "question_text": "What is the difference between controlled and uncontrolled components?",
+    "reference_answer": "A controlled input has its value held in React state, with an onChange handler updating it, so React is the single source of truth and you can validate or transform input on each change. An uncontrolled input keeps its own value in the DOM, and you read it when needed through a ref or on form submit. Controlled components give more control and are the common choice; uncontrolled ones are simpler and cheaper for basic forms or file inputs."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "MID",
+    "question_text": "How do you manage state that is shared across many components? Compare Context with a library such as Redux or Zustand.",
+    "reference_answer": "Start by lifting state up; when prop drilling becomes painful use Context to provide values like theme or the current user. Context re-renders all consumers when its value changes, so it is poor for frequently updated, large state. Libraries such as Redux Toolkit or Zustand offer selective subscriptions, devtools, middleware and predictable update patterns, which helps for complex client state. For server data prefer a dedicated cache such as TanStack Query rather than putting it in a global store."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "MID",
+    "question_text": "What are custom hooks and what rules of hooks must you follow?",
+    "reference_answer": "A custom hook is a function whose name starts with use and that calls other hooks to encapsulate reusable stateful logic, for example useFetch or useDebounce. Each call has its own isolated state. The rules are: call hooks only at the top level (not inside loops, conditions or nested functions) so the order is the same every render, and call them only from React function components or other hooks. The ESLint plugin react-hooks enforces these rules."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "SENIOR",
+    "question_text": "A React page with a large list is slow. How would you diagnose and improve it?",
+    "reference_answer": "Profile first with React DevTools Profiler and the browser Performance tab to see which components render often and how long they take. Typical fixes: virtualize the list (react-window or react-virtuoso) so only visible rows are mounted, memoize row components and stabilize props, move state closer to where it is used to limit re-render scope, debounce expensive inputs, split code and lazy-load heavy parts, and paginate or filter on the server. Use stable keys and avoid creating new objects or functions in props for memoized children. Re-measure after each change."
+  },
+  {
+    "category": "REACT",
+    "difficulty": "SENIOR",
+    "question_text": "Explain server-side rendering versus client-side rendering and where React Server Components fit.",
+    "reference_answer": "Client-side rendering ships a mostly empty HTML page and builds the UI in the browser after JavaScript loads, which is simple but slower to first content and weaker for SEO. Server-side rendering produces HTML on the server for a fast first paint and better SEO, then hydrates it on the client to make it interactive, at the cost of server load and hydration time. React Server Components run only on the server, can read data directly and send no component JavaScript to the client, while client components handle interactivity. Frameworks such as Next.js combine these; the choice depends on SEO needs, data freshness and performance goals."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "JUNIOR",
+    "question_text": "What are the four pillars of object-oriented programming?",
+    "reference_answer": "Encapsulation bundles data with the methods that operate on it and hides internal details behind a public interface. Abstraction exposes only what is essential and hides complexity, for example through interfaces or abstract classes. Inheritance lets a class reuse and extend the behavior of a parent class. Polymorphism lets different types be used through a common interface, with the correct method chosen at runtime. Together they help manage complexity and support reuse."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between method overloading and method overriding?",
+    "reference_answer": "Overloading means several methods in the same class share a name but have different parameter lists; it is resolved at compile time (static polymorphism). Overriding means a subclass provides its own implementation of a method defined in its parent with the same signature; it is resolved at runtime based on the actual object type (dynamic polymorphism). Overriding relies on inheritance, and in Java the @Override annotation helps catch mistakes."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "JUNIOR",
+    "question_text": "What is the difference between composition and inheritance, and which do you prefer?",
+    "reference_answer": "Inheritance models an 'is-a' relationship and reuses behavior from a parent class, but it creates tight coupling and fragile hierarchies. Composition models 'has-a': an object holds other objects and delegates work to them, which is more flexible because collaborators can be swapped, even at runtime, and tested independently. The common guideline is to favor composition over inheritance, and use inheritance only for true is-a relationships where substitutability holds."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "MID",
+    "question_text": "Explain the SOLID principles with a short example for at least two of them.",
+    "reference_answer": "Single Responsibility: a class should have one reason to change, for example separate invoice calculation from invoice printing. Open/Closed: open for extension, closed for modification, for example add a new discount strategy class rather than editing a growing if-else chain. Liskov Substitution: subtypes must be usable wherever the base type is expected without breaking behavior, so a Square that breaks Rectangle's contract violates it. Interface Segregation: prefer small, focused interfaces over one large one. Dependency Inversion: depend on abstractions, not concrete classes, and inject implementations."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "MID",
+    "question_text": "What is polymorphism and how does it help write maintainable code?",
+    "reference_answer": "Polymorphism lets code work with a base type or interface while the concrete behavior depends on the actual object. For example, a list of Shape objects can each be asked for area() and every subclass computes its own. It removes type-checking if-else or switch blocks, so adding a new shape requires a new class rather than editing existing code, which supports the open/closed principle. It is implemented through inheritance and method overriding or through interfaces and duck typing."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "MID",
+    "question_text": "What is a design pattern? Describe the Strategy and Factory patterns.",
+    "reference_answer": "A design pattern is a reusable, named solution to a commonly occurring design problem. Strategy defines a family of interchangeable algorithms behind a common interface and lets the client choose one at runtime, for example different payment calculation or sorting strategies, avoiding conditionals. Factory encapsulates object creation so callers ask for an object by type or configuration without knowing the concrete class, which decouples them from constructors. Patterns are tools, not goals; apply them only when they solve a real problem."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "MID",
+    "question_text": "What is dependency injection and why is it useful?",
+    "reference_answer": "Dependency injection means an object receives the collaborators it needs from the outside (via constructor, setter or framework) rather than creating them itself. This reduces coupling to concrete classes, makes it easy to swap implementations, and allows tests to inject mocks or fakes. Constructor injection is preferred because dependencies are explicit and the object is always fully initialized. It is a form of inversion of control, typically supported by containers such as Spring."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "SENIOR",
+    "question_text": "How would you refactor a large class that has grown to do too many things?",
+    "reference_answer": "First ensure there are tests that capture current behavior. Identify distinct responsibilities, using cohesion of fields and methods as a guide, and extract them step by step into collaborating classes (Extract Class, Move Method), replacing long conditionals with polymorphism or strategies where appropriate. Introduce interfaces at the seams and inject the new collaborators. Make small commits, running tests after each step, and keep the public API stable until callers can be migrated. The goal is single-responsibility classes with clear names, not more classes for their own sake."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "SENIOR",
+    "question_text": "When can inheritance become harmful, and what problems does the fragile base class issue cause?",
+    "reference_answer": "Inheritance exposes subclasses to the internal details of the base class, so a seemingly safe change in the parent can break children that depend on its behavior, for example when an overridden method is called by another base method. Deep hierarchies are hard to understand, force subclasses to inherit unneeded behavior, and violate Liskov Substitution when child types cannot honor the parent contract. Mitigations include favoring composition and delegation, making classes final unless designed for extension, documenting extension points, and keeping hierarchies shallow."
+  },
+  {
+    "category": "OOP",
+    "difficulty": "SENIOR",
+    "question_text": "Explain Domain-Driven Design basics: entities, value objects and aggregates.",
+    "reference_answer": "DDD models software around the business domain using a shared ubiquitous language. An entity has an identity that persists over time even if its attributes change, such as an Order with an id. A value object has no identity and is defined by its values, is immutable and replaceable, such as Money or Address. An aggregate is a cluster of entities and value objects treated as a single consistency unit with one aggregate root through which all changes go, enforcing invariants; transactions should generally not span multiple aggregates. Bounded contexts separate models with different meanings of the same term."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "MID",
+    "question_text": "Design a URL shortener such as bit.ly. What are the main components and trade-offs?",
+    "reference_answer": "Clarify requirements: create short links, redirect quickly, high read-to-write ratio, optional expiry and analytics. The API has POST /shorten and GET /{code} returning a 301 or 302 redirect. Generate a unique code, for example a base62-encoded counter or id from a distributed id generator (avoids collisions better than random hashing), and store code-to-URL mappings in a key-value or relational store with an index on the code. Put a cache (Redis) in front for hot links, use a CDN or load balancer for scale, and count clicks asynchronously via a queue. Discuss collision handling, custom aliases, abuse prevention and 301 versus 302 (caching versus accurate analytics)."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "MID",
+    "question_text": "What is caching and what are common cache invalidation strategies?",
+    "reference_answer": "Caching stores frequently accessed data in a fast layer (in-memory, Redis, CDN) to reduce latency and load on the source. Common patterns: cache-aside (the app checks the cache, then loads from the database and populates it), write-through (writes go to both cache and database), and write-behind (writes are buffered and persisted later, risking loss). Invalidation options include time-based TTLs, explicit deletion or update on writes, and versioned keys. Watch for stale data, cache stampedes on expiry (mitigate with locking or jittered TTLs) and eviction policies such as LRU."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "MID",
+    "question_text": "Explain horizontal versus vertical scaling and how a load balancer fits in.",
+    "reference_answer": "Vertical scaling adds more CPU, memory or disk to a single machine; it is simple but has hardware limits and a single point of failure. Horizontal scaling adds more machines and spreads the work among them, giving better fault tolerance and near-linear capacity growth, but requires stateless services or shared state stores. A load balancer distributes incoming requests across instances using algorithms such as round robin, least connections or consistent hashing, performs health checks to remove failed nodes, and may terminate TLS. Sessions should be kept in a shared store rather than in server memory."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "MID",
+    "question_text": "What is the difference between SQL and NoSQL databases, and how do you choose?",
+    "reference_answer": "Relational databases offer structured schemas, joins and strong ACID transactions, which suit data with clear relationships and consistency needs such as payments. NoSQL databases (key-value, document, wide-column, graph) trade some of these for flexible schemas and easier horizontal scaling, which suit very high write volumes, denormalized access patterns or specialized models. Choose by access patterns, consistency requirements, data shape and scale rather than fashion; many systems use both. Start with a relational database unless there is a concrete reason not to."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "Explain the CAP theorem and how it influences database choice.",
+    "reference_answer": "CAP states that during a network partition a distributed system must choose between consistency (every read sees the latest write) and availability (every request gets a non-error response); partition tolerance itself is not optional in real networks. CP systems (for example etcd, or HBase) refuse or delay requests to stay consistent, while AP systems (for example Cassandra, DynamoDB in eventual mode) keep serving and reconcile later. PACELC adds that even without partitions there is a latency versus consistency trade-off. Choose according to business needs: a banking ledger leans toward consistency, a social feed toward availability."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "Design a rate limiter for an API. Which algorithms would you consider?",
+    "reference_answer": "Decide the scope (per user, API key or IP) and the limits. Options: fixed window counter (simple but allows bursts at window edges), sliding window log or counter (more accurate, more memory), token bucket (allows controlled bursts and is widely used) and leaky bucket (smooths output). For multiple servers keep counters in a shared store such as Redis, using atomic operations or Lua scripts to avoid races. Return 429 with Retry-After headers, apply limits at the gateway, and plan for the limiter's own failure mode (fail open or closed) and for multi-region consistency."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "When would you use a message queue such as Kafka or RabbitMQ, and what delivery guarantees should you understand?",
+    "reference_answer": "Queues decouple producers from consumers, absorb traffic spikes, enable asynchronous work like emails or video processing, and allow independent scaling and retries. Kafka is a distributed append-only log suited to high-throughput event streaming and replay; RabbitMQ is a broker suited to task routing and flexible messaging patterns. Delivery semantics are at-most-once, at-least-once (the common default, which requires idempotent consumers to handle duplicates) and exactly-once (limited and costly). Also consider ordering within partitions, dead-letter queues for poison messages and consumer lag monitoring."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "Compare a monolith with microservices. When is each the right choice?",
+    "reference_answer": "A monolith deploys as one unit: simple to develop, test, deploy and debug, with in-process calls and easy transactions, but it can become hard to scale teams and release independently. Microservices split the system into independently deployable services, allowing team autonomy, targeted scaling and technology choice, but add network latency, distributed data consistency problems, operational complexity and the need for observability, service discovery and resilience patterns. Start with a well-modularized monolith for small teams or unclear domains and extract services when clear boundaries and scaling or organizational needs justify the overhead."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "Design a news feed or notification system for millions of users. How do you handle fan-out?",
+    "reference_answer": "Clarify scale, freshness and ordering needs. Fan-out on write precomputes each follower's feed when a post is created: reads are fast, but writes are expensive for users with millions of followers. Fan-out on read assembles the feed at request time: cheap writes but slow reads. A hybrid approach pushes posts for normal users and pulls from celebrity accounts at read time. Use a queue to process fan-out asynchronously, store feeds in a cache or fast store sorted by time or ranking score, paginate with cursors, and handle media via object storage and a CDN. Discuss failure recovery and monitoring."
+  },
+  {
+    "category": "SYSTEM_DESIGN",
+    "difficulty": "SENIOR",
+    "question_text": "How would you make a service highly available and resilient to failures?",
+    "reference_answer": "Eliminate single points of failure by running redundant stateless instances behind load balancers across multiple availability zones, with replicated databases and automatic failover. Add resilience patterns: timeouts, retries with exponential backoff and jitter, circuit breakers, bulkheads and graceful degradation. Make operations idempotent so retries are safe, use health checks and autoscaling, and deploy gradually (canary or blue-green) with fast rollback. Define SLOs, monitor with metrics, logs and tracing, and rehearse failures through backups, restore drills and chaos testing."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "JUNIOR",
+    "question_text": "Tell me about yourself and why you are interested in this role.",
+    "reference_answer": "A strong answer is a concise two-minute story in a present-past-future shape: current role or studies and key strengths, relevant experience or projects that prepared you, and why this role and company fit your goals. Tie your skills to the job description with one or two specific achievements, for example a project you built and its result. Avoid reciting a resume or personal details unrelated to work, and end by connecting your motivation to what the team is trying to achieve."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "JUNIOR",
+    "question_text": "Describe a time you had to learn a new technology quickly. Answer using the STAR method.",
+    "reference_answer": "Situation: a project needed a technology you had not used, with a deadline. Task: you were responsible for delivering a specific part. Action: describe how you learned (official docs, a small prototype, asking a mentor, reading source code), how you prioritized what to learn first, and how you checked your understanding. Result: quantify the outcome, for example the feature shipped on time and you later documented or taught it to the team. Reflect on what you learned about your learning approach."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "JUNIOR",
+    "question_text": "Tell me about a mistake you made at work or in a project and what you learned from it. Use the STAR method.",
+    "reference_answer": "Choose a real but non-catastrophic mistake. Situation and Task: briefly explain the context and your responsibility. Action: take ownership without blaming others, explain how you detected and fixed the problem, communicated with stakeholders, and what you did to prevent recurrence (a test, a checklist, a review step). Result: the impact and the lasting improvement in your behavior. Interviewers look for honesty, accountability and growth rather than a disguised strength."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "MID",
+    "question_text": "Describe a disagreement you had with a teammate and how you resolved it. Use the STAR method.",
+    "reference_answer": "Situation: a technical or process disagreement, for example about an approach or a deadline. Task: the need to reach a decision without damaging the relationship. Action: listen to understand their reasoning, focus on shared goals and data rather than personalities, propose a small experiment or involve a neutral person if needed, and agree on a decision, committing to it even if it wasn't your preference. Result: the outcome for the project and the relationship, plus what you learned about communication. Avoid portraying the other person as the villain."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "MID",
+    "question_text": "Tell me about a time you had to meet a tight deadline with competing priorities. Use the STAR method.",
+    "reference_answer": "Situation: multiple deliverables with a fixed deadline. Task: your accountability for the outcome. Action: show prioritization by impact and urgency, clarifying expectations with stakeholders, breaking work into milestones, cutting or deferring scope transparently, asking for help when needed, and communicating progress and risks early. Result: what was delivered, quality, and the effect on the team or customer, plus any process you adopted afterwards. Quantify results where possible."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "MID",
+    "question_text": "Give an example of a time you took initiative to improve something without being asked. Use the STAR method.",
+    "reference_answer": "Situation: you noticed a recurring problem, for example slow builds, manual deployments or unclear documentation. Task: no one owned it, but you saw the cost. Action: describe how you validated the problem with data, proposed a solution, got buy-in, implemented it in a small, low-risk way and shared it with the team. Result: measurable benefit such as time saved per week or fewer incidents, and how others adopted it. Show ownership while respecting existing priorities."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "MID",
+    "question_text": "How do you handle receiving critical feedback? Share a specific example using the STAR method.",
+    "reference_answer": "Situation: you received critical feedback in a code review or performance discussion. Task: respond constructively and improve. Action: listen without defensiveness, ask clarifying questions and for concrete examples, thank the person, create a specific plan (for instance adopting a checklist or pairing) and follow up to confirm progress. Result: the visible improvement and how the relationship or quality changed. Show that you treat feedback as information to grow, not as criticism of your worth."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "SENIOR",
+    "question_text": "Tell me about a time you led a project or mentored teammates through a difficult situation. Use the STAR method.",
+    "reference_answer": "Situation: a project at risk or a team member struggling. Task: your leadership responsibility, with or without formal authority. Action: clarify goals and ownership, break down the work, remove blockers, delegate according to strengths, provide regular feedback and psychological safety, and keep stakeholders informed. For mentoring, describe how you adapted guidance to the person and gradually increased their autonomy. Result: delivery outcome and the growth of the people involved, with concrete metrics or feedback. Use 'I' for your own actions and credit the team appropriately."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "SENIOR",
+    "question_text": "Describe a time you had to make a technical decision with incomplete information or significant trade-offs. Use the STAR method.",
+    "reference_answer": "Situation: a decision such as choosing an architecture, a build-versus-buy option or a migration plan, with uncertainty. Task: you owned the recommendation. Action: explain how you gathered evidence (spikes, benchmarks, stakeholder input), laid out options with their costs and risks, made reversible choices where possible, documented the decision (for example in an ADR) and set checkpoints to revisit it. Result: the outcome, including what you would do differently if it was not perfect. Demonstrate structured thinking and the ability to commit and communicate."
+  },
+  {
+    "category": "BEHAVIORAL",
+    "difficulty": "SENIOR",
+    "question_text": "Tell me about a time you pushed back on a stakeholder or manager request. Use the STAR method.",
+    "reference_answer": "Situation: a request that was unrealistic or risky, such as an impossible deadline or a shortcut that created technical debt. Task: protect quality and the business goal while keeping trust. Action: understand the underlying need, present facts and risks with data, offer alternatives (reduced scope, phased delivery, extra resources), and agree on a path, escalating respectfully only if necessary. Result: the agreed outcome and the preserved or improved relationship. Show that you disagree constructively and then commit to the decision."
+  }
+]
