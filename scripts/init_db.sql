@@ -25,8 +25,11 @@ CREATE TABLE IF NOT EXISTS question_bank (
     question_text TEXT NOT NULL,
     reference_answer TEXT NOT NULL,
     embedding vector(768),
+    content_hash VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ix_question_bank_content_hash
+    ON question_bank (content_hash);
 CREATE INDEX IF NOT EXISTS ix_question_bank_embedding_hnsw
     ON question_bank USING hnsw (embedding vector_cosine_ops);
 
