@@ -1,6 +1,12 @@
 import re
 
 import pytest
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Session
+
+from app.models import QuestionBank
 
 from app.services import question_seeder
 
@@ -67,3 +73,121 @@ def test_backoff_gives_up_after_max_retries():
         question_seeder.embed_with_backoff(embedder, ["a"], max_retries=2, sleep=lambda s: None)
 
     assert embedder.calls == 3
+
+
+# --- seeding against an in-memory SQLite (pgvector's column is stored as TEXT there) ---
+
+DIM = 768
+
+
+@compiles(Vector, "sqlite")
+def _vector_as_text_on_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+
+@pytest.fixture
+def session():
+    engine = create_engine("sqlite://")
+    QuestionBank.__table__.create(engine)
+    with Session(engine) as s:
+        yield s
+    engine.dispose()
+
+
+def _q(n, category="JAVA"):
+    return {
+        "category": category,
+        "difficulty": "MID",
+        "question_text": f"Question number {n}?",
+        "reference_answer": f"Answer {n}.",
+    }
+
+
+class _RecordingEmbedder:
+    def __init__(self):
+        self.batches = []
+
+    def __call__(self, texts):
+        self.batches.append(list(texts))
+        return [[0.5] * DIM for _ in texts]
+
+
+def _seed(session, questions, embed, **kw):
+    return question_seeder.seed(session, questions, embed, sleep=lambda s: None, **kw)
+
+
+def test_seed_inserts_every_question_with_an_embedding_and_hash(session):
+    questions = [_q(1), _q(2, "SQL"), _q(3)]
+
+    result = _seed(session, questions, _RecordingEmbedder())
+
+    rows = session.scalars(select(QuestionBank).order_by(QuestionBank.id)).all()
+    assert result.inserted == 3 and result.skipped == 0
+    assert [r.question_text for r in rows] == [q["question_text"] for q in questions]
+    assert all(r.embedding is not None and len(r.embedding) == DIM for r in rows)
+    assert all(r.content_hash == question_seeder.content_hash(r.question_text) for r in rows)
+
+
+def test_seed_embeds_in_batches_of_the_requested_size(session):
+    embedder = _RecordingEmbedder()
+
+    _seed(session, [_q(n) for n in range(5)], embedder, batch_size=2)
+
+    assert [len(b) for b in embedder.batches] == [2, 2, 1]
+
+
+def test_running_seed_twice_creates_no_duplicates_and_skips_the_embedding_call(session):
+    questions = [_q(1), _q(2)]
+    _seed(session, questions, _RecordingEmbedder())
+    second_embedder = _RecordingEmbedder()
+
+    result = _seed(session, questions, second_embedder)
+
+    assert session.scalar(select(func.count()).select_from(QuestionBank)) == 2
+    assert result.inserted == 0 and result.skipped == 2
+    assert second_embedder.batches == []
+
+
+def test_seed_only_adds_questions_missing_from_the_bank(session):
+    _seed(session, [_q(1), _q(2)], _RecordingEmbedder())
+    embedder = _RecordingEmbedder()
+
+    result = _seed(session, [_q(1), _q(2), _q(3)], embedder)
+
+    assert result.inserted == 1 and result.skipped == 2
+    assert embedder.batches == [["Question number 3?"]]
+
+
+def test_seed_collapses_duplicate_questions_within_the_file(session):
+    result = _seed(session, [_q(1), _q(1)], _RecordingEmbedder())
+
+    assert result.inserted == 1
+    assert session.scalar(select(func.count()).select_from(QuestionBank)) == 1
+
+
+def test_seed_rejects_an_embedding_of_the_wrong_dimension(session):
+    with pytest.raises(ValueError, match="768"):
+        _seed(session, [_q(1)], lambda texts: [[0.1, 0.2] for _ in texts])
+
+    assert session.scalar(select(func.count()).select_from(QuestionBank)) == 0
+
+
+def test_seed_keeps_finished_batches_when_a_later_batch_fails(session):
+    calls = []
+
+    def embedder(texts):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError("boom")
+        return [[0.5] * DIM for _ in texts]
+
+    with pytest.raises(RuntimeError):
+        _seed(session, [_q(n) for n in range(4)], embedder, batch_size=2)
+
+    assert session.scalar(select(func.count()).select_from(QuestionBank)) == 2
+
+
+def test_category_counts_reports_the_bank_per_category(session):
+    _seed(session, [_q(1), _q(2), _q(3, "SQL")], _RecordingEmbedder())
+
+    assert question_seeder.category_counts(session) == {"JAVA": 2, "SQL": 1}
