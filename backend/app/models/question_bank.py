@@ -18,9 +18,12 @@ class QuestionBank(Base):
     question_text: Mapped[str] = mapped_column(Text)
     reference_answer: Mapped[str] = mapped_column(Text)
     embedding = mapped_column(Vector(EMBEDDING_DIM))
+    # SHA-256 of the normalised question_text; the seed script's idempotency key.
+    content_hash: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime | None] = mapped_column(server_default=func.current_timestamp())
 
     __table_args__ = (
+        Index("ix_question_bank_content_hash", "content_hash", unique=True),
         Index(
             "ix_question_bank_embedding_hnsw",
             "embedding",
