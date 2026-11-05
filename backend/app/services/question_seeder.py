@@ -3,6 +3,8 @@ import re
 import time
 from dataclasses import dataclass
 
+from google.genai import errors as genai_errors
+from google.genai import types
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -94,3 +96,21 @@ def category_counts(session: Session) -> dict[str, int]:
         select(QuestionBank.category, func.count()).group_by(QuestionBank.category).order_by(QuestionBank.category)
     )
     return dict(rows.all())
+
+
+class GeminiEmbedder:
+    """Embeds texts as retrieval documents, sized to the question_bank.embedding column."""
+
+    def __init__(self, client, model: str):
+        self.client = client
+        self.model = model
+
+    def __call__(self, texts: list[str]) -> list[list[float]]:
+        config = types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT", output_dimensionality=EMBEDDING_DIM)
+        try:
+            response = self.client.models.embed_content(model=self.model, contents=texts, config=config)
+        except genai_errors.APIError as exc:
+            if exc.code == 429:
+                raise EmbeddingRateLimited() from exc
+            raise
+        return [list(e.values) for e in response.embeddings]

@@ -1,6 +1,8 @@
 import re
 
 import pytest
+from google.genai import errors as genai_errors
+from google.genai import types
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.ext.compiler import compiles
@@ -191,3 +193,51 @@ def test_category_counts_reports_the_bank_per_category(session):
     _seed(session, [_q(1), _q(2), _q(3, "SQL")], _RecordingEmbedder())
 
     assert question_seeder.category_counts(session) == {"JAVA": 2, "SQL": 1}
+
+
+# --- Gemini embedder ---
+
+
+class _FakeModels:
+    def __init__(self, error=None):
+        self.error = error
+        self.kwargs = None
+
+    def embed_content(self, **kwargs):
+        self.kwargs = kwargs
+        if self.error:
+            raise self.error
+        vectors = [types.ContentEmbedding(values=[float(i)] * DIM) for i, _ in enumerate(kwargs["contents"])]
+        return types.EmbedContentResponse(embeddings=vectors)
+
+
+class _FakeClient:
+    def __init__(self, error=None):
+        self.models = _FakeModels(error)
+
+
+def test_gemini_embedder_asks_for_document_embeddings_of_the_column_size():
+    client = _FakeClient()
+
+    vectors = question_seeder.GeminiEmbedder(client, "text-embedding-004")(["a", "b"])
+
+    kwargs = client.models.kwargs
+    assert kwargs["model"] == "text-embedding-004"
+    assert kwargs["contents"] == ["a", "b"]
+    assert kwargs["config"].task_type == "RETRIEVAL_DOCUMENT"
+    assert kwargs["config"].output_dimensionality == DIM
+    assert [v[0] for v in vectors] == [0.0, 1.0]
+
+
+def test_gemini_embedder_turns_a_429_into_a_rate_limit_signal():
+    error = genai_errors.ClientError(429, {"error": {"code": 429, "message": "quota", "status": "RESOURCE_EXHAUSTED"}})
+
+    with pytest.raises(question_seeder.EmbeddingRateLimited):
+        question_seeder.GeminiEmbedder(_FakeClient(error), "m")(["a"])
+
+
+def test_gemini_embedder_lets_other_api_errors_through():
+    error = genai_errors.ClientError(400, {"error": {"code": 400, "message": "bad", "status": "INVALID_ARGUMENT"}})
+
+    with pytest.raises(genai_errors.ClientError):
+        question_seeder.GeminiEmbedder(_FakeClient(error), "m")(["a"])
