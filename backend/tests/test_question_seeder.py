@@ -241,3 +241,11 @@ def test_gemini_embedder_lets_other_api_errors_through():
 
     with pytest.raises(genai_errors.ClientError):
         question_seeder.GeminiEmbedder(_FakeClient(error), "m")(["a"])
+
+
+def test_gemini_embedder_can_embed_queries_instead_of_documents():
+    client = _FakeClient()
+
+    question_seeder.GeminiEmbedder(client, "m", task_type="RETRIEVAL_QUERY")(["a"])
+
+    assert client.models.kwargs["config"].task_type == "RETRIEVAL_QUERY"

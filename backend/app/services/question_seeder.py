@@ -99,14 +99,18 @@ def category_counts(session: Session) -> dict[str, int]:
 
 
 class GeminiEmbedder:
-    """Embeds texts as retrieval documents, sized to the question_bank.embedding column."""
+    """Embeds texts sized to the question_bank.embedding column.
 
-    def __init__(self, client, model: str):
+    Stored questions are RETRIEVAL_DOCUMENTs; a search text is a RETRIEVAL_QUERY.
+    """
+
+    def __init__(self, client, model: str, task_type: str = "RETRIEVAL_DOCUMENT"):
         self.client = client
         self.model = model
+        self.task_type = task_type
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
-        config = types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT", output_dimensionality=EMBEDDING_DIM)
+        config = types.EmbedContentConfig(task_type=self.task_type, output_dimensionality=EMBEDDING_DIM)
         try:
             response = self.client.models.embed_content(model=self.model, contents=texts, config=config)
         except genai_errors.APIError as exc:
