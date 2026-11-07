@@ -1,0 +1,15 @@
+# gemini-embedding-001, 80-question bank, default weights (keyword 0.3, max 3 per category)
+
+Java Backend JD: PASS (4/5 fit; need 3; mostly Java, SQL and API questions)
+  * SYSTEM_DESIGN SENIOR dist=0.361 kw=0.231  Design a rate limiter for an API. Which algorithms would you consider?
+    OOP           MID    dist=0.386 kw=0.286  What is a design pattern? Describe the Strategy and Factory patterns.
+  * JAVA          SENIOR dist=0.351 kw=0.167  How would you diagnose and fix a memory leak in a production Java serv
+  * JAVA          SENIOR dist=0.380 kw=0.231  Explain how Spring's dependency injection works and how @Transactional
+  * JAVA          MID    dist=0.370 kw=0.167  What are Java Streams, and what is the difference between intermediate
+
+React JD: PASS (3/5 fit; need 3; mostly React (frontend) questions)
+  * REACT         SENIOR dist=0.320 kw=0.167  A React page with a large list is slow. How would you diagnose and imp
+  * REACT         MID    dist=0.368 kw=0.286  How do you manage state that is shared across many components? Compare
+  * REACT         MID    dist=0.370 kw=0.231  What are custom hooks and what rules of hooks must you follow?
+    BEHAVIORAL    JUNIOR dist=0.361 kw=0.000  Describe a time you had to learn a new technology quickly. Answer usin
+    PYTHON        SENIOR dist=0.434 kw=0.231  How would you design a FastAPI service so that it stays responsive und
