@@ -67,6 +67,8 @@ docker compose up -d --build
 - Sau khi đổi cấu hình Vite/Tailwind/PostCSS hoặc cài thêm thư viện, khởi động lại dev server: `docker compose restart frontend`
 - Áp migration CSDL: `docker compose exec backend alembic upgrade head`
 - Nạp ngân hàng câu hỏi kèm embedding (chạy lại an toàn, bỏ qua câu đã có): `docker compose exec backend python /scripts/seed_questions.py`
+- Kiểm tra truy xuất câu hỏi (RAG) với CSDL và Gemini thật: `docker compose exec backend python -m evals.run_rag_eval`
+- Test SQL của RAG cần Postgres thật, mặc định bị bỏ qua: đặt `TEST_DATABASE_URL=postgresql+psycopg://USER:PASS@127.0.0.1:PORT/DB` rồi chạy `pytest`. Mỗi test dùng schema tạm và rollback nên không đụng dữ liệu.
 - Chạy test backend: `docker compose exec backend sh -c "pip install -q -r requirements-dev.txt && python -m pytest"` (test dùng SQLite trong bộ nhớ, không cần Postgres)
 - Service chấm Writing (`app/services/english_coach.py`): gọi Gemini với response schema, nhiệt độ 0.1; kiểm tra `overall_band` là bội số 0.5 trong 0-9 và `original_sentence` phải trích đúng nguyên văn bài viết; JSON sai thì thử lại tối đa 2 lần rồi trả 502 `AI_INVALID_RESPONSE`; rate limit trả 429 `RATE_LIMITED` kèm `Retry-After`. Cần `GEMINI_API_KEY` trong `.env` (model đổi qua `GEMINI_MODEL`). 
 - Kiểm tra chất lượng chấm điểm: `docker compose exec backend python -m evals.run_writing_eval` chấm 10 bài mẫu (band 5.0-8.0, `backend/evals/samples.py`) bằng Gemini thật và in bảng band AI so với band tham chiếu cùng sai số trung bình. Kết quả, hạn chế và lịch sử phiên bản prompt ở `docs/evals/writing-scoring.md`
