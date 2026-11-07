@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from dataclasses import dataclass
 
 MAX_JD_CHARS = 2000
 MAX_CV_CHARS = 1500
@@ -41,3 +42,37 @@ def extract_keywords(text: str) -> list[str]:
     ]
     # Counter keeps first-seen order, and most_common is stable for equal counts.
     return [w for w, _ in Counter(words).most_common(MAX_KEYWORDS)]
+
+
+@dataclass(frozen=True)
+class RetrievedQuestion:
+    id: int
+    category: str
+    difficulty: str
+    question_text: str
+    reference_answer: str
+    distance: float  # cosine distance to the query embedding; 0 is identical
+    keyword_score: float  # 0..1 full-text match against the role and JD keywords
+    score: float  # hybrid score used for ranking; higher is better
+
+
+def diversify(ranked: list[RetrievedQuestion], limit: int, max_per_category: int) -> list[RetrievedQuestion]:
+    """Pick `limit` questions from best-first `ranked`, at most `max_per_category` of each category.
+
+    If the cap leaves the list short, the best of the rejected ones fill the gap, so a bank
+    with few categories still returns `limit` questions. The result keeps the ranking order.
+    """
+    per_category: Counter[str] = Counter()
+    picked: list[RetrievedQuestion] = []
+    deferred: list[RetrievedQuestion] = []
+    for hit in ranked:
+        if len(picked) == limit:
+            break
+        if per_category[hit.category] < max_per_category:
+            per_category[hit.category] += 1
+            picked.append(hit)
+        else:
+            deferred.append(hit)
+    picked += deferred[: limit - len(picked)]
+    rank = {hit.id: i for i, hit in enumerate(ranked)}
+    return sorted(picked, key=lambda h: rank[h.id])

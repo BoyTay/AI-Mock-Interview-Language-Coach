@@ -57,3 +57,50 @@ def test_keywords_are_capped():
     text = " ".join(f"word{n}" for n in range(100))
 
     assert len(rag_service.extract_keywords(text)) == rag_service.MAX_KEYWORDS
+
+
+def _hit(id_, category, score=0.0):
+    return rag_service.RetrievedQuestion(
+        id=id_,
+        category=category,
+        difficulty="MID",
+        question_text=f"q{id_}",
+        reference_answer="a",
+        distance=1 - score,
+        keyword_score=0.0,
+        score=score,
+    )
+
+
+def _ids(hits):
+    return [h.id for h in hits]
+
+
+def test_diversify_skips_a_third_question_of_a_category_in_favour_of_other_categories():
+    ranked = [_hit(1, "JAVA"), _hit(2, "JAVA"), _hit(3, "JAVA"), _hit(4, "SQL"), _hit(5, "OOP"), _hit(6, "JAVA")]
+
+    picked = rag_service.diversify(ranked, limit=4, max_per_category=2)
+
+    assert _ids(picked) == [1, 2, 4, 5]
+
+
+def test_diversify_relaxes_the_cap_when_there_are_too_few_categories():
+    ranked = [_hit(n, "JAVA") for n in range(1, 8)]
+
+    picked = rag_service.diversify(ranked, limit=5, max_per_category=2)
+
+    assert _ids(picked) == [1, 2, 3, 4, 5]
+
+
+def test_diversify_returns_everything_when_fewer_than_the_limit():
+    ranked = [_hit(1, "JAVA"), _hit(2, "SQL")]
+
+    assert _ids(rag_service.diversify(ranked, limit=5, max_per_category=2)) == [1, 2]
+
+
+def test_diversify_keeps_the_ranking_order_in_the_result():
+    ranked = [_hit(1, "JAVA"), _hit(2, "JAVA"), _hit(3, "JAVA"), _hit(4, "SQL")]
+
+    picked = rag_service.diversify(ranked, limit=4, max_per_category=2)
+
+    assert _ids(picked) == [1, 2, 3, 4]
