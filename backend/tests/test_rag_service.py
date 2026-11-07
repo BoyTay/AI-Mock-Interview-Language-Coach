@@ -1,4 +1,8 @@
-from app.services import rag_service
+import pytest
+
+from app.core.config import Settings
+from app.core.errors import AppError
+from app.services import question_seeder, rag_service
 
 
 def test_query_combines_role_job_description_and_cv_summary():
@@ -104,3 +108,26 @@ def test_diversify_keeps_the_ranking_order_in_the_result():
     picked = rag_service.diversify(ranked, limit=4, max_per_category=2)
 
     assert _ids(picked) == [1, 2, 3, 4]
+
+
+def test_factory_refuses_to_run_without_an_api_key():
+    settings = Settings(database_url="sqlite://", gemini_api_key="")
+
+    with pytest.raises(AppError) as exc:
+        rag_service.build_rag_service(settings)
+
+    assert exc.value.status_code == 503
+    assert exc.value.code == "AI_NOT_CONFIGURED"
+
+
+def test_factory_embeds_search_text_as_queries_with_the_configured_model():
+    settings = Settings(
+        database_url="sqlite://", gemini_api_key="test-key", gemini_embedding_model="embed-test"
+    )
+
+    service = rag_service.build_rag_service(settings)
+
+    assert isinstance(service, rag_service.RagService)
+    assert isinstance(service.embed, question_seeder.GeminiEmbedder)
+    assert service.embed.model == "embed-test"
+    assert service.embed.task_type == "RETRIEVAL_QUERY"

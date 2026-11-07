@@ -4,10 +4,14 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from google import genai
 from sqlalchemy import Float, cast, func, literal, select
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings
+from app.core.errors import AppError
 from app.models.question_bank import QuestionBank
+from app.services.question_seeder import GeminiEmbedder
 
 logger = logging.getLogger(__name__)
 
@@ -172,3 +176,10 @@ class RagService:
                 hit.id, hit.category, hit.difficulty, hit.distance, hit.keyword_score, hit.score,
             )
         return picked
+
+
+def build_rag_service(settings: Settings) -> RagService:
+    if not settings.gemini_api_key:
+        raise AppError(503, "AI_NOT_CONFIGURED", "GEMINI_API_KEY is not set")
+    client = genai.Client(api_key=settings.gemini_api_key)
+    return RagService(GeminiEmbedder(client, settings.gemini_embedding_model, task_type="RETRIEVAL_QUERY"))
