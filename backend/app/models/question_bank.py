@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
-EMBEDDING_DIM = 768  # text-embedding-004
+EMBEDDING_DIM = 768  # gemini-embedding-001 truncated to 768 dims
 
 
 class QuestionBank(Base):

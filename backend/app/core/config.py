@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     # Must output 768 dimensions to fit question_bank.embedding.
-    gemini_embedding_model: str = "text-embedding-004"
+    gemini_embedding_model: str = "gemini-embedding-001"
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = "http://localhost:5173"
 
