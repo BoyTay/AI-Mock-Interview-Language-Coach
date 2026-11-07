@@ -19,7 +19,7 @@ MAX_JD_CHARS = 2000
 MAX_CV_CHARS = 1500
 MAX_KEYWORDS = 15
 DEFAULT_LIMIT = 5
-DEFAULT_MAX_PER_CATEGORY = 2
+DEFAULT_MAX_PER_CATEGORY = 3
 # How much a full keyword match is worth next to cosine similarity (which spans 0..1).
 DEFAULT_KEYWORD_WEIGHT = 0.3
 # Candidates fetched before diversifying; more than `limit` so the category cap has room to work.
