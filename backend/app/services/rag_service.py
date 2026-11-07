@@ -1,10 +1,25 @@
+import logging
 import re
 from collections import Counter
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+
+from sqlalchemy import Float, cast, func, literal, select
+from sqlalchemy.orm import Session
+
+from app.models.question_bank import QuestionBank
+
+logger = logging.getLogger(__name__)
 
 MAX_JD_CHARS = 2000
 MAX_CV_CHARS = 1500
 MAX_KEYWORDS = 15
+DEFAULT_LIMIT = 5
+DEFAULT_MAX_PER_CATEGORY = 2
+# How much a full keyword match is worth next to cosine similarity (which spans 0..1).
+DEFAULT_KEYWORD_WEIGHT = 0.3
+# Candidates fetched before diversifying; more than `limit` so the category cap has room to work.
+DEFAULT_CANDIDATE_POOL = 30
 MIN_KEYWORD_LENGTH = 3
 
 # Filler that appears in nearly every job description and says nothing about the stack.
@@ -76,3 +91,84 @@ def diversify(ranked: list[RetrievedQuestion], limit: int, max_per_category: int
     picked += deferred[: limit - len(picked)]
     rank = {hit.id: i for i, hit in enumerate(ranked)}
     return sorted(picked, key=lambda h: rank[h.id])
+
+
+# (texts) -> one embedding per text. Embed with the RETRIEVAL_QUERY task type.
+Embed = Callable[[list[str]], list[list[float]]]
+
+
+class RagService:
+    """Finds the interview questions that best fit a candidate's role, job description and CV.
+
+    Ranking is hybrid: cosine similarity of the query embedding to each question, plus a
+    bonus for words from the role and job description found in the question text or category.
+    """
+
+    def __init__(
+        self,
+        embed: Embed,
+        *,
+        max_per_category: int = DEFAULT_MAX_PER_CATEGORY,
+        keyword_weight: float = DEFAULT_KEYWORD_WEIGHT,
+        candidate_pool: int = DEFAULT_CANDIDATE_POOL,
+    ):
+        self.embed = embed
+        self.max_per_category = max_per_category
+        self.keyword_weight = keyword_weight
+        self.candidate_pool = candidate_pool
+
+    def retrieve(
+        self,
+        session: Session,
+        *,
+        target_role: str,
+        job_description: str | None,
+        cv_text: str | None,
+        difficulties: Sequence[str] | None = None,
+        limit: int = DEFAULT_LIMIT,
+    ) -> list[RetrievedQuestion]:
+        query = build_query(target_role, job_description, cv_text)
+        (query_vector,) = self.embed([query])
+        keywords = extract_keywords(f"{target_role} {job_description or ''}")
+
+        distance = QuestionBank.embedding.cosine_distance(query_vector)
+        if keywords:
+            # Words are OR-ed: a job description rarely matches a short question on every word.
+            searchable = func.to_tsvector(
+                "english", QuestionBank.question_text + " " + func.replace(QuestionBank.category, "_", " ")
+            )
+            # Flag 32 scales the rank into 0..1 so the weight means the same for any query.
+            keyword = func.ts_rank_cd(searchable, func.to_tsquery("english", " | ".join(keywords)), 32)
+        else:
+            keyword = literal(0.0)
+        score = (1 - distance) + self.keyword_weight * keyword
+
+        stmt = (
+            select(QuestionBank, cast(distance, Float), cast(keyword, Float), cast(score, Float))
+            .where(QuestionBank.embedding.is_not(None))
+            .order_by(score.desc(), QuestionBank.id)
+            .limit(self.candidate_pool)
+        )
+        if difficulties:
+            stmt = stmt.where(QuestionBank.difficulty.in_(difficulties))
+
+        ranked = [
+            RetrievedQuestion(
+                id=row.id,
+                category=row.category,
+                difficulty=row.difficulty,
+                question_text=row.question_text,
+                reference_answer=row.reference_answer,
+                distance=dist,
+                keyword_score=kw,
+                score=total,
+            )
+            for row, dist, kw, total in session.execute(stmt)
+        ]
+        picked = diversify(ranked, limit, self.max_per_category)
+        for hit in picked:
+            logger.info(
+                "RAG pick id=%s category=%s difficulty=%s distance=%.4f keyword=%.4f score=%.4f",
+                hit.id, hit.category, hit.difficulty, hit.distance, hit.keyword_score, hit.score,
+            )
+        return picked
