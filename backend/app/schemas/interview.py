@@ -1,6 +1,11 @@
-from pydantic import BaseModel, field_validator
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 MAX_SCORE = 100
+DEFAULT_QUESTION_COUNT = 6
+MAX_QUESTION_COUNT = 10
+MAX_ANSWER_CHARS = 5000
 
 
 def _check_score(value: int) -> int:
@@ -30,3 +35,36 @@ class InterviewEvaluation(BaseModel):
     extracted_mistake_card: MistakeCardDraft
 
     _score = field_validator("technical_accuracy_score", "communication_clarity_score")(_check_score)
+
+
+class StartInterviewRequest(BaseModel):
+    # Role defaults to the saved profile when omitted.
+    target_role: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
+    job_description: Annotated[str, StringConstraints(max_length=10000)] | None = None
+    question_count: int = Field(DEFAULT_QUESTION_COUNT, ge=1, le=MAX_QUESTION_COUNT)
+    difficulties: list[Literal["JUNIOR", "MID", "SENIOR"]] | None = None
+
+
+class QuestionOut(BaseModel):
+    message_id: int
+    type: Literal["MAIN_QUESTION", "FOLLOW_UP"]
+    text: str
+    category: str
+    difficulty: str
+    index: int  # which main question this is, from 1; a follow-up keeps its main question's number
+    total: int
+
+
+class StartInterviewOut(BaseModel):
+    session_id: int
+    question: QuestionOut
+
+
+class AnswerRequest(BaseModel):
+    answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_ANSWER_CHARS)]
+
+
+class AnswerOut(BaseModel):
+    evaluation: InterviewEvaluation
+    next_question: QuestionOut | None  # null once the last question has been answered
+    session_complete: bool

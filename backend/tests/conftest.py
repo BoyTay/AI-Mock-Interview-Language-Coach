@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
 from app.main import app
-from app.models import MistakeCard, UserProfile, WritingSubmission
+from app.models import InterviewSession, MistakeCard, SessionMessage, UserProfile, WritingSubmission
 
 
 @compiles(JSONB, "sqlite")
@@ -31,6 +31,8 @@ def db_session():
     UserProfile.__table__.create(engine)
     WritingSubmission.__table__.create(engine)
     MistakeCard.__table__.create(engine)
+    InterviewSession.__table__.create(engine)
+    SessionMessage.__table__.create(engine)
     session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)()
     session.add(
         UserProfile(
