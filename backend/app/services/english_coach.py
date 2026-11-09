@@ -4,7 +4,7 @@ from collections.abc import Callable
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings
 from app.core.errors import AppError
@@ -35,17 +35,18 @@ def _squash(text: str) -> str:
 
 
 class GeminiLlm:
-    def __init__(self, client, model: str, temperature: float = TEMPERATURE):
+    def __init__(self, client, model: str, temperature: float = TEMPERATURE, schema: type[BaseModel] = WritingEvaluation):
         self.client = client
         self.model = model
         self.temperature = temperature
+        self.schema = schema
 
     def __call__(self, system_prompt: str, user_prompt: str) -> str:
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=self.temperature,
             response_mime_type="application/json",
-            response_schema=WritingEvaluation,
+            response_schema=self.schema,
         )
         try:
             response = self.client.models.generate_content(

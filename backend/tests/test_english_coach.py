@@ -323,3 +323,13 @@ def test_prompts_carry_a_version_so_eval_results_can_be_traced_to_them():
     from app.services.english_prompts import PROMPT_VERSION
 
     assert PROMPT_VERSION.strip()
+
+
+def test_gemini_adapter_can_be_pointed_at_another_response_schema():
+    from app.schemas.interview import InterviewEvaluation
+
+    client = FakeGenaiClient(result=FakeResult("{}"))
+
+    GeminiLlm(client, model="m", schema=InterviewEvaluation)("SYSTEM", "USER")
+
+    assert client.kwargs["config"].response_schema is InterviewEvaluation
