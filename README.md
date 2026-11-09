@@ -68,6 +68,7 @@ docker compose up -d --build
 - Áp migration CSDL: `docker compose exec backend alembic upgrade head`
 - Nạp ngân hàng câu hỏi kèm embedding (chạy lại an toàn, bỏ qua câu đã có): `docker compose exec backend python /scripts/seed_questions.py`
 - Kiểm tra truy xuất câu hỏi (RAG) với CSDL và Gemini thật: `docker compose exec backend python -m evals.run_rag_eval`
+- Phỏng vấn kỹ thuật qua API (xem `/docs`): `POST /api/v1/interviews/start` (mặc định 6 câu, lấy theo hồ sơ + JD) rồi lặp `POST /api/v1/interviews/{id}/answer` với `{"answer": "..."}`. Mỗi câu chính có tối đa 2 câu xoáy; khi `session_complete` là `true` thì đã hết câu hỏi. Gặp `429 RATE_LIMITED` thì đợi `Retry-After` rồi gửi lại cùng câu trả lời (lượt lỗi không được lưu).
 - Test SQL của RAG cần Postgres thật, mặc định bị bỏ qua: đặt `TEST_DATABASE_URL=postgresql+psycopg://USER:PASS@127.0.0.1:PORT/DB` rồi chạy `pytest`. Mỗi test dùng schema tạm và rollback nên không đụng dữ liệu.
 - Chạy test backend: `docker compose exec backend sh -c "pip install -q -r requirements-dev.txt && python -m pytest"` (test dùng SQLite trong bộ nhớ, không cần Postgres)
 - Service chấm Writing (`app/services/english_coach.py`): gọi Gemini với response schema, nhiệt độ 0.1; kiểm tra `overall_band` là bội số 0.5 trong 0-9 và `original_sentence` phải trích đúng nguyên văn bài viết; JSON sai thì thử lại tối đa 2 lần rồi trả 502 `AI_INVALID_RESPONSE`; rate limit trả 429 `RATE_LIMITED` kèm `Retry-After`. Cần `GEMINI_API_KEY` trong `.env` (model đổi qua `GEMINI_MODEL`). 
