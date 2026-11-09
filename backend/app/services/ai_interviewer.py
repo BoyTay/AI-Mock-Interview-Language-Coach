@@ -23,7 +23,8 @@ Scoring:
 
 Language:
 - critique is written in Vietnamese: short, concrete, name what was right and what is missing.
-- optimal_reference_answer and next_ai_question are written in the language of the interview question.
+- optimal_reference_answer is written in the language of the main question.
+- next_ai_question must be in the same language as the main question (for an English question, English), even though the critique is Vietnamese.
 
 Follow-up questions:
 - Ask a follow-up only when the answer left a real gap, or was off topic. Otherwise should_ask_followup is false and next_ai_question is an empty string.

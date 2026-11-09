@@ -165,3 +165,13 @@ def test_factory_builds_an_interviewer_that_scores_with_the_interview_schema():
     assert isinstance(interviewer, ai_interviewer.Interviewer)
     assert interviewer.llm.model == "gemini-test"
     assert interviewer.llm.schema is InterviewEvaluation
+
+
+def test_the_prompt_keeps_follow_ups_in_the_questions_language_despite_the_vietnamese_critique():
+    llm = ScriptedLlm(evaluation())
+
+    ai_interviewer.Interviewer(llm).evaluate(turn())
+
+    system, user = llm.calls[0]
+    assert "next_ai_question must be in the same language as the main question" in system
+    assert "even though the critique is Vietnamese" in system
