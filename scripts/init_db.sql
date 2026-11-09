@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     status VARCHAR(20) DEFAULT 'IN_PROGRESS',
     overall_score NUMERIC(5, 2),
     feedback_summary JSONB,
+    question_plan JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS ix_interview_sessions_user_id ON interview_sessions (user_id);
