@@ -21,6 +21,9 @@ class InterviewSession(Base):
     status: Mapped[str | None] = mapped_column(String(20), server_default="IN_PROGRESS")
     overall_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     feedback_summary: Mapped[dict | None] = mapped_column(JSONB)
+    # The main questions chosen at start, in order, as snapshots (id, category, difficulty,
+    # question_text, reference_answer), so the session does not depend on later edits to question_bank.
+    question_plan: Mapped[list | None] = mapped_column(JSONB)
     created_at: Mapped[datetime | None] = mapped_column(server_default=func.current_timestamp())
 
 
