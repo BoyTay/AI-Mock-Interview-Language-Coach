@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
@@ -120,3 +121,74 @@ class ReportSynthesis(BaseModel):
     gaps: list[KnowledgeGap]
     star: StarAssessment | None  # null when no behavioural question was answered
     questions: list[QuestionAnalysis]
+
+
+# --- the report returned by /finish and /report ---
+
+
+class FragmentOut(BaseModel):
+    text: str
+    kind: Literal["gap", "error", "key"] | None  # null for plain text
+
+
+class TurnOut(BaseModel):
+    type: Literal["MAIN_QUESTION", "FOLLOW_UP"]
+    question: str
+    answer: str
+    technical_score: int
+    clarity_score: int
+    critique: str
+
+
+class MistakeCardOut(BaseModel):
+    front: str
+    back: str
+
+
+class QuestionReport(BaseModel):
+    number: int
+    category: str
+    difficulty: str
+    question: str
+    score: int  # mean technical score over the answers to this question and its follow-ups
+    communication_score: int
+    tags: list[ReportTag]
+    turns: list[TurnOut]
+    your_answer: list[FragmentOut]  # the first answer, cut into plain and highlighted pieces
+    reference_answer: list[FragmentOut]
+    mistake_card: MistakeCardOut | None
+
+
+class StarReport(BaseModel):
+    percent: int
+    situation: bool
+    task: bool
+    action: bool
+    result: bool
+    note: str
+
+
+class Comparison(BaseModel):
+    previous_average: float | None  # mean overall score of the user's earlier finished interviews
+    previous_sessions: int
+    delta: float | None
+
+
+class InterviewReport(BaseModel):
+    session_id: int
+    target_role: str | None
+    status: str
+    started_at: datetime | None
+    duration_seconds: int | None
+    finished_early: bool
+    answered_questions: int
+    total_questions: int
+    overall_score: float
+    communication_score: float
+    headline: str
+    summary: str
+    star: StarReport | None
+    strengths: list[Strength]
+    gaps: list[KnowledgeGap]
+    comparison: Comparison
+    questions: list[QuestionReport]

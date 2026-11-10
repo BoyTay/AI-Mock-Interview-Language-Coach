@@ -1,4 +1,17 @@
+import math
 from dataclasses import dataclass, field
+
+from app.schemas.interview import (
+    Comparison,
+    FragmentOut,
+    InterviewReport,
+    MistakeCardOut,
+    QuestionAnalysis,
+    QuestionReport,
+    ReportSynthesis,
+    StarReport,
+    TurnOut,
+)
 
 MAIN_QUESTION = "MAIN_QUESTION"
 
@@ -6,7 +19,7 @@ MAIN_QUESTION = "MAIN_QUESTION"
 def _round_half_up(value: float, digits: int = 0) -> float:
     # Python's round() sends 72.5 to 72; a score of 72.5 should read 73.
     factor = 10**digits
-    return int(value * factor + 0.5) / factor
+    return math.floor(value * factor + 0.5) / factor
 
 
 def _mean(values: list[float]) -> float:
@@ -110,3 +123,105 @@ def split_fragments(text: str, highlights: list[tuple[str, str]]) -> list[Fragme
     if cursor < len(text):
         fragments.append(Fragment(text[cursor:], None))
     return fragments or [Fragment(text, None)]
+
+
+MAX_STRENGTHS = 3
+MAX_GAPS = 4
+MAX_TAGS = 4
+STAR_LETTERS = ("situation", "task", "action", "result")
+
+
+def _mistake_card(group: QuestionGroup) -> MistakeCardOut | None:
+    for turn in group.turns:
+        card = turn.evaluation.get("extracted_mistake_card") or {}
+        if card.get("should_create") and card.get("front") and card.get("back"):
+            return MistakeCardOut(front=card["front"], back=card["back"])
+    return None
+
+
+def _question_report(group: QuestionGroup, analysis: QuestionAnalysis | None) -> QuestionReport:
+    first = group.turns[0]
+    reference = first.evaluation.get("optimal_reference_answer") or group.entry["reference_answer"]
+    answer_marks = [(h.quote, h.kind) for h in analysis.answer_highlights] if analysis else []
+    reference_marks = [(h.quote, "key") for h in analysis.reference_highlights] if analysis else []
+    return QuestionReport(
+        number=group.number,
+        category=group.entry["category"],
+        difficulty=group.entry["difficulty"],
+        question=group.entry["question_text"],
+        score=question_score(group),
+        communication_score=int(_round_half_up(_clarity(group))),
+        tags=(analysis.tags if analysis else [])[:MAX_TAGS],
+        turns=[
+            TurnOut(
+                type=t.type,
+                question=t.question,
+                answer=t.answer,
+                technical_score=t.evaluation["technical_accuracy_score"],
+                clarity_score=t.evaluation["communication_clarity_score"],
+                critique=t.evaluation["critique"],
+            )
+            for t in group.turns
+        ],
+        your_answer=[FragmentOut(text=f.text, kind=f.kind) for f in split_fragments(first.answer, answer_marks)],
+        reference_answer=[FragmentOut(text=f.text, kind=f.kind) for f in split_fragments(reference, reference_marks)],
+        mistake_card=_mistake_card(group),
+    )
+
+
+def _star_report(synthesis: ReportSynthesis, groups: list[QuestionGroup]) -> StarReport | None:
+    # STAR only applies to behavioural answers, so ignore a block the model gave for anything else.
+    if synthesis.star is None or not any(g.entry["category"] == "BEHAVIORAL" for g in groups):
+        return None
+    star = synthesis.star
+    return StarReport(
+        percent=25 * sum(getattr(star, letter) for letter in STAR_LETTERS),
+        situation=star.situation,
+        task=star.task,
+        action=star.action,
+        result=star.result,
+        note=star.note,
+    )
+
+
+def build_report(
+    session,
+    groups: list[QuestionGroup],
+    synthesis: ReportSynthesis,
+    comparison: Comparison,
+    duration_seconds: int | None,
+) -> InterviewReport:
+    """Put the computed scores and the model's write-up together into the stored report."""
+    analyses = {a.question_number: a for a in synthesis.questions}
+    total = len(session.question_plan or [])
+    overall = overall_score(groups)
+    return InterviewReport(
+        session_id=session.id,
+        target_role=session.target_role,
+        status="COMPLETED",
+        started_at=session.created_at,
+        duration_seconds=duration_seconds,
+        finished_early=len(groups) < total,
+        answered_questions=len(groups),
+        total_questions=total,
+        overall_score=overall,
+        communication_score=communication_score(groups),
+        headline=synthesis.headline,
+        summary=synthesis.summary,
+        star=_star_report(synthesis, groups),
+        strengths=synthesis.strengths[:MAX_STRENGTHS],
+        gaps=synthesis.gaps[:MAX_GAPS],
+        comparison=comparison,
+        questions=[_question_report(g, analyses.get(g.number)) for g in groups],
+    )
+
+
+def compare_with_previous(overall: float, previous_scores: list[float]) -> Comparison:
+    if not previous_scores:
+        return Comparison(previous_average=None, previous_sessions=0, delta=None)
+    average = _round_half_up(_mean(previous_scores), 2)
+    return Comparison(
+        previous_average=average,
+        previous_sessions=len(previous_scores),
+        delta=_round_half_up(overall - average, 2),
+    )

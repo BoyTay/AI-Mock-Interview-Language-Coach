@@ -144,3 +144,24 @@ def test_fragments_follow_the_order_of_the_text_not_of_the_quotes():
 
 def test_empty_quotes_are_ignored():
     assert texts(report.split_fragments("Text.", [("", "gap"), ("  ", "gap")])) == [("Text.", None)]
+
+
+# --- comparison with earlier sessions ---
+
+
+def test_comparison_without_earlier_sessions_is_empty():
+    result = report.compare_with_previous(80.0, [])
+
+    assert (result.previous_average, result.previous_sessions, result.delta) == (None, 0, None)
+
+
+def test_comparison_reports_the_average_and_a_positive_delta():
+    result = report.compare_with_previous(90.0, [70.0, 80.0])
+
+    assert (result.previous_average, result.previous_sessions, result.delta) == (75.0, 2, 15.0)
+
+
+def test_a_score_below_the_average_gives_a_correctly_rounded_negative_delta():
+    result = report.compare_with_previous(72.33, [75.0])
+
+    assert result.delta == -2.67
