@@ -1,14 +1,13 @@
 from dataclasses import dataclass
 
 from google import genai
-from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.schemas.interview import InterviewEvaluation
-from app.services.english_coach import GeminiLlm, Llm, LlmRateLimitError
+from app.services.english_coach import GeminiLlm, Llm
+from app.services.llm_json import MAX_RETRIES, call_json
 
-MAX_RETRIES = 2
 
 _SYSTEM = """\
 You are a senior engineer running a technical job interview. You assess one candidate answer at a time against a reference answer, then decide whether to probe deeper.
@@ -79,25 +78,14 @@ class Interviewer:
         self.max_retries = max_retries
 
     def evaluate(self, turn: Turn) -> InterviewEvaluation:
-        prompt = _user_prompt(turn)
-        for _ in range(self.max_retries + 1):
-            try:
-                raw = self.llm(_SYSTEM, prompt)
-            except LlmRateLimitError as exc:
-                raise AppError(
-                    429,
-                    "RATE_LIMITED",
-                    "The AI service is busy. Try again shortly.",
-                    headers={"Retry-After": str(exc.retry_after)},
-                ) from exc
-            try:
-                return InterviewEvaluation.model_validate_json(raw)
-            except ValidationError as exc:
-                problems = "; ".join(
-                    f"{'.'.join(str(p) for p in err['loc']) or 'response'}: {err['msg']}" for err in exc.errors()
-                )
-                prompt = _retry_prompt(turn, problems)
-        raise AppError(502, "AI_INVALID_RESPONSE", "The AI service returned an unusable evaluation")
+        return call_json(
+            self.llm,
+            _SYSTEM,
+            _user_prompt(turn),
+            InterviewEvaluation,
+            lambda problem: _retry_prompt(turn, problem),
+            self.max_retries,
+        )
 
 
 def build_interviewer(settings: Settings) -> Interviewer:

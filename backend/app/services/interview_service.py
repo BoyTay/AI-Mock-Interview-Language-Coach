@@ -1,13 +1,16 @@
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.models import InterviewSession, SessionMessage, UserProfile
-from app.schemas.interview import AnswerOut, QuestionOut, StartInterviewOut, StartInterviewRequest
-from app.services import interview_policy
+from app.schemas.interview import AnswerOut, InterviewReport, QuestionOut, StartInterviewOut, StartInterviewRequest
+from app.services import interview_policy, interview_report
 from app.services.ai_interviewer import Turn
 
 SESSION_TYPE = "TECH_INTERVIEW"
+COMPLETED = "COMPLETED"
 MAIN_QUESTION = "MAIN_QUESTION"
 FOLLOW_UP = "FOLLOW_UP"
 
@@ -77,9 +80,7 @@ def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: in
     if session.status != "IN_PROGRESS":
         raise AppError(409, "SESSION_NOT_ACTIVE", "This interview session is not in progress")
 
-    history = db.scalars(
-        select(SessionMessage).where(SessionMessage.session_id == session.id).order_by(SessionMessage.id)
-    ).all()
+    history = _history(db, session)
     pending = history[-1] if history else None
     if pending is None or pending.sender != "AI":
         raise AppError(409, "NO_PENDING_QUESTION", "There is no question waiting for an answer")
@@ -139,3 +140,58 @@ def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: in
     db.commit()
 
     return AnswerOut(evaluation=evaluation, next_question=next_question, session_complete=next_question is None)
+
+
+def _history(db: Session, session: InterviewSession) -> list[SessionMessage]:
+    return db.scalars(
+        select(SessionMessage).where(SessionMessage.session_id == session.id).order_by(SessionMessage.id)
+    ).all()
+
+
+def _previous_scores(db: Session, profile: UserProfile, session: InterviewSession) -> list[float]:
+    rows = db.scalars(
+        select(InterviewSession.overall_score).where(
+            InterviewSession.user_id == profile.id,
+            InterviewSession.session_type == SESSION_TYPE,
+            InterviewSession.status == COMPLETED,
+            InterviewSession.id != session.id,
+            InterviewSession.overall_score.is_not(None),
+        )
+    ).all()
+    return [float(score) for score in rows]
+
+
+def finish_interview(db: Session, profile: UserProfile, writer, session_id: int) -> InterviewReport:
+    session = _load_owned_session(db, profile, session_id)
+    if session.status == COMPLETED and session.feedback_summary:
+        # Already finished: hand back the stored report instead of asking the model again.
+        return InterviewReport.model_validate(session.feedback_summary)
+    if session.status != "IN_PROGRESS":
+        raise AppError(409, "SESSION_NOT_ACTIVE", "This interview session is not in progress")
+
+    history = _history(db, session)
+    groups = interview_report.group_turns(history, session.question_plan or [])
+    if not groups:
+        raise AppError(409, "NO_ANSWERS", "Answer at least one question before finishing the interview")
+
+    # Summarise first and write afterwards: if the model fails the session stays open and finish can be retried.
+    synthesis = writer.write(session.target_role or profile.target_role, groups)
+    comparison = interview_report.compare_with_previous(
+        interview_report.overall_score(groups), _previous_scores(db, profile, session)
+    )
+    last = history[-1].created_at
+    duration = int(max((last - session.created_at).total_seconds(), 0)) if last and session.created_at else None
+    report = interview_report.build_report(session, groups, synthesis, comparison, duration)
+
+    session.status = COMPLETED
+    session.overall_score = Decimal(str(report.overall_score))
+    session.feedback_summary = report.model_dump(mode="json")
+    db.commit()
+    return report
+
+
+def get_report(db: Session, profile: UserProfile, session_id: int) -> InterviewReport:
+    session = _load_owned_session(db, profile, session_id)
+    if session.status != COMPLETED or not session.feedback_summary:
+        raise AppError(409, "REPORT_NOT_READY", "Finish the interview to get its report")
+    return InterviewReport.model_validate(session.feedback_summary)
