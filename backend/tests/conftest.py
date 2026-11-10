@@ -13,8 +13,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
 from app.main import app
-from app.api.routes_interview import get_interviewer, get_rag_service
-from tests.interview_helpers import FakeInterviewer, FakeRag, bank_question
+from app.api.routes_interview import get_interviewer, get_rag_service, get_report_writer
+from tests.interview_helpers import FakeInterviewer, FakeRag, FakeReportWriter, bank_question
 from app.models import InterviewSession, MistakeCard, SessionMessage, UserProfile, WritingSubmission
 
 
@@ -68,6 +68,16 @@ def use_interviewer():
     def install(*evaluations):
         fake = FakeInterviewer(*evaluations)
         app.dependency_overrides[get_interviewer] = lambda: fake
+        return fake
+
+    return install
+
+
+@pytest.fixture
+def use_writer():
+    def install(*items):
+        fake = FakeReportWriter(*items)
+        app.dependency_overrides[get_report_writer] = lambda: fake
         return fake
 
     return install

@@ -78,3 +78,41 @@ def messages(db_session, session_id):
     return db_session.scalars(
         select(SessionMessage).where(SessionMessage.session_id == session_id).order_by(SessionMessage.id)
     ).all()
+
+
+def synthesis_dict(**overrides):
+    base = {
+        "headline": "Tốt",
+        "summary": "Nền tảng vững, cần thêm chiều sâu.",
+        "strengths": [{"title": "Indexing", "text": "Nêu đúng đánh đổi."}],
+        "gaps": [{"title": "Atomics", "level": "High", "text": "Chưa nói về read-modify-write."}],
+        "star": {"situation": True, "task": True, "action": True, "result": False, "note": "Thiếu kết quả."},
+        "questions": [],
+    }
+    base.update(overrides)
+    return base
+
+
+class FakeReportWriter:
+    """Returns the scripted synthesis (the last one repeats) and records the groups it was given."""
+
+    def __init__(self, *items):
+        from app.schemas.interview import ReportSynthesis
+
+        self.items = [i if isinstance(i, Exception) else ReportSynthesis.model_validate(i) for i in items]
+        self.calls = []
+
+    def write(self, role, groups):
+        self.calls.append((role, groups))
+        item = self.items.pop(0) if len(self.items) > 1 else self.items[0]
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+def finish(client, session_id):
+    return client.post(f"/api/v1/interviews/{session_id}/finish")
+
+
+def get_report(client, session_id):
+    return client.get(f"/api/v1/interviews/{session_id}/report")
