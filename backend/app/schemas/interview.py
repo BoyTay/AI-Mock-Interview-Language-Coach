@@ -68,3 +68,55 @@ class AnswerOut(BaseModel):
     evaluation: InterviewEvaluation
     next_question: QuestionOut | None  # null once the last question has been answered
     session_complete: bool
+
+
+# --- what the model writes for the report (qualitative parts only; scores are computed in code) ---
+
+
+class ReportTag(BaseModel):
+    text: str
+    tone: Literal["good", "warn", "bad"]
+
+
+class AnswerHighlight(BaseModel):
+    quote: str  # copied verbatim from the candidate's answer
+    kind: Literal["gap", "error"]
+
+
+class ReferenceHighlight(BaseModel):
+    quote: str  # copied verbatim from the optimal answer: a key point to include
+
+
+class QuestionAnalysis(BaseModel):
+    question_number: int
+    tags: list[ReportTag]
+    answer_highlights: list[AnswerHighlight]
+    reference_highlights: list[ReferenceHighlight]
+
+
+class Strength(BaseModel):
+    title: str
+    text: str
+
+
+class KnowledgeGap(BaseModel):
+    title: str
+    level: Literal["High", "Medium"]
+    text: str
+
+
+class StarAssessment(BaseModel):
+    situation: bool
+    task: bool
+    action: bool
+    result: bool
+    note: str
+
+
+class ReportSynthesis(BaseModel):
+    headline: str
+    summary: str
+    strengths: list[Strength]
+    gaps: list[KnowledgeGap]
+    star: StarAssessment | None  # null when no behavioural question was answered
+    questions: list[QuestionAnalysis]
