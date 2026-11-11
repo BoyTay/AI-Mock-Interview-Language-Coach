@@ -3,7 +3,15 @@ import Badge from '@/components/common/Badge'
 import Card from '@/components/common/Card'
 import Waveform from './Waveform'
 
-export default function InterviewerCard() {
+const STATES = {
+  waiting: { tone: 'g', label: 'Waiting for you', pulse: false },
+  thinking: { tone: 'a', label: 'Thinking…', pulse: true },
+  done: { tone: 'i', label: 'Finished', pulse: false },
+}
+
+export default function InterviewerCard({ state = 'waiting' }) {
+  const { tone, label, pulse } = STATES[state]
+
   return (
     <Card className="flex flex-col gap-5 p-5">
       <div className="flex items-center gap-3">
@@ -15,9 +23,15 @@ export default function InterviewerCard() {
           <span className="text-xs text-slate-400">Technical round · English</span>
         </div>
         <div className="flex-1" />
-        <Badge tone="g">
-          <i className="block size-2 rounded-full bg-emerald-400 motion-safe:animate-[blink_1.4s_ease-in-out_infinite]" />
-          Speaking
+        <Badge tone={tone}>
+          <i
+            className={
+              pulse
+                ? 'block size-2 rounded-full bg-amber-400 motion-safe:animate-[blink_1.4s_ease-in-out_infinite]'
+                : 'block size-2 rounded-full bg-current'
+            }
+          />
+          {label}
         </Badge>
       </div>
       <Waveform className="h-[72px] px-1" />
