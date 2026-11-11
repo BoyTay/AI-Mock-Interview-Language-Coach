@@ -12,6 +12,7 @@ MAX_EXPLANATION_CHARS = 2000
 class CardSource(str, Enum):
     GRAMMAR_ERROR = "GRAMMAR_ERROR"
     VOCABULARY = "VOCABULARY"
+    TECH_CONCEPT = "TECH_CONCEPT"
 
 
 def _squash(text: str) -> str:

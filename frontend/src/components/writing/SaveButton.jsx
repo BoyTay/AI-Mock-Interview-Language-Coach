@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 const LABEL = { idle: '+ Save to Flashcards', saving: 'Saving...', saved: 'Saved to Flashcards', error: 'Try again' }
 
 // status: 'idle' | 'saving' | 'saved' | 'error'. Only idle and error can be pressed, so a card is never sent twice.
-export default function SaveButton({ status = 'idle', onClick }) {
+export default function SaveButton({ status = 'idle', onClick, labels = LABEL }) {
   const locked = status === 'saving' || status === 'saved'
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -19,7 +19,7 @@ export default function SaveButton({ status = 'idle', onClick }) {
             : 'border-indigo-600 bg-indigo-600/[.14] text-indigo-200 hover:bg-indigo-600/[.28] disabled:cursor-wait disabled:opacity-60',
         )}
       >
-        {LABEL[status]}
+        {labels[status]}
       </button>
       {status === 'error' && (
         <span role="alert" className="text-xs text-amber-400">

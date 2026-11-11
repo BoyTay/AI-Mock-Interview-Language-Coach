@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { routes } from './routes'
 
+vi.mock('@/api/interview', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchProfile: vi.fn().mockResolvedValue({ target_role: 'Dev', has_cv: true }),
+}))
+
 function renderAt(path) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(<RouterProvider router={router} />)
@@ -9,7 +14,7 @@ function renderAt(path) {
 
 test.each([
   ['/', 'Dashboard'],
-  ['/interview', 'Tech Mock Interview'],
+  ['/interview', 'Set up your session'],
   ['/english', 'English Writing Coach'],
   ['/flashcards', 'Mistake Flashcards'],
   ['/profile', 'CV & JD Profile'],

@@ -80,9 +80,23 @@ def test_a_different_correction_for_the_same_text_is_a_different_card(client, db
     assert card_count(db_session) == 2
 
 
+def test_creates_a_tech_concept_card_from_an_interview(client, db_session):
+    payload = grammar(
+        source_type="TECH_CONCEPT",
+        front_content="Why not over-index a write-heavy table?",
+        back_content="Every write must update each index.",
+    )
+
+    response = client.post(URL, json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["source_type"] == "TECH_CONCEPT"
+    assert card_count(db_session) == 1
+
+
 def test_rejects_unknown_source_type_and_blank_content(client, db_session):
     for bad in (
-        grammar(source_type="TECH_CONCEPT"),
+        grammar(source_type="NOT_A_SOURCE"),
         grammar(source_type="NOPE"),
         grammar(front_content="   "),
         grammar(back_content=""),

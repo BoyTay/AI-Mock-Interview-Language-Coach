@@ -1,70 +1,73 @@
-import { Play, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { createFlashcard } from '@/api/flashcards'
 import Accordion from '@/components/common/Accordion'
 import Badge from '@/components/common/Badge'
 import Caption from '@/components/common/Caption'
 import Card from '@/components/common/Card'
+import SaveButton from '@/components/writing/SaveButton'
 import { cn } from '@/lib/utils'
+import { conceptCard } from '@/utils/cards'
 import { scoreTone } from '@/utils/tone'
 import Chip from './Chip'
 
 const HIGHLIGHT = {
-  r: 'border-b-2 border-rose-500 bg-rose-500/[.18]',
-  a: 'border-b-2 border-amber-500 bg-amber-500/20',
-  g: 'border-b-2 border-emerald-500 bg-emerald-500/[.18]',
-  c: 'rounded bg-slate-950 px-1.5 py-0.5 font-mono text-[12.5px] text-indigo-200',
+  error: 'border-b-2 border-rose-500 bg-rose-500/[.18]',
+  gap: 'border-b-2 border-amber-500 bg-amber-500/20',
+  key: 'border-b-2 border-emerald-500 bg-emerald-500/[.18]',
+}
+const TAG_TONE = { good: 'g', warn: 'a', bad: 'r' }
+const SAVE_LABELS = {
+  idle: 'Add to Mistake Flashcards',
+  saving: 'Saving…',
+  saved: 'Added to Flashcards',
+  error: 'Try again',
 }
 
 function Fragments({ parts }) {
   return (
-    <p className="m-0 text-sm leading-[1.75] text-slate-300">
+    <p className="m-0 whitespace-pre-wrap break-words text-sm leading-[1.75] text-slate-300">
       {parts.map((p, i) => (
-        <span key={i} className={cn(HIGHLIGHT[p.h])}>
-          {p.t}
+        <span key={i} className={cn(HIGHLIGHT[p.kind])}>
+          {p.text}
         </span>
       ))}
     </p>
   )
 }
 
-// Static, deterministic bars: 17 of 48 are "played".
-function RecordedPlayer({ duration }) {
-  const bars = Array.from({ length: 48 }, (_, i) => {
-    const h = 4 + Math.abs(Math.sin(i * 0.9) * 8 + Math.sin(i * 0.37) * 6)
-    return { x: 2 + i * 5, y1: 16 - h, y2: 16 + h, played: i < 17 }
-  })
-
+function FollowUps({ turns }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-[10px] border border-slate-800 bg-slate-950 px-3.5 py-2.5">
-      <button
-        type="button"
-        aria-label="Play recording"
-        className="flex size-10 flex-none items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
-      >
-        <Play className="size-4" fill="currentColor" aria-hidden="true" />
-      </button>
-      <svg viewBox="0 0 240 32" preserveAspectRatio="none" className="block h-8 min-w-20 flex-1" aria-hidden="true">
-        {bars.map((b) => (
-          <path
-            key={b.x}
-            d={`M${b.x} ${b.y1.toFixed(1)} V${b.y2.toFixed(1)}`}
-            stroke={b.played ? '#818cf8' : '#475569'}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        ))}
-      </svg>
-      <span className="whitespace-nowrap font-mono text-xs text-slate-400">0:00 / {duration}</span>
-      <span className="rounded-[5px] border border-slate-700 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-300">
-        1x
-      </span>
-    </div>
+    <section aria-label="Follow-up exchange" className="flex flex-col gap-3">
+      <Caption>Follow-up exchange</Caption>
+      {turns.map((t, i) => (
+        <div key={i} className="flex flex-col gap-1.5 rounded-[10px] border border-slate-800 bg-slate-950 p-4">
+          <span className="text-[13px] font-semibold text-sky-300">{t.question}</span>
+          <span className="whitespace-pre-wrap break-words text-sm leading-normal text-slate-300">{t.answer}</span>
+          <span className="text-[13px] leading-normal text-slate-400">{t.critique}</span>
+        </div>
+      ))}
+    </section>
   )
 }
 
 export default function QuestionBreakdown({ questions }) {
-  // Index of the open question; -1 means all closed. Q4 starts open, as in the design.
-  const [openIndex, setOpenIndex] = useState(3)
+  // Open the weakest question first: that is the one worth reading.
+  const weakest = questions.reduce((low, q, i) => (q.score < questions[low].score ? i : low), 0)
+  const [openIndex, setOpenIndex] = useState(weakest)
+  // question number -> 'saving' | 'saved' | 'error'
+  const [saves, setSaves] = useState({})
+
+  async function save(question) {
+    const status = saves[question.number]
+    if (status === 'saving' || status === 'saved') return
+    setSaves((s) => ({ ...s, [question.number]: 'saving' }))
+    try {
+      await createFlashcard(conceptCard(question))
+      setSaves((s) => ({ ...s, [question.number]: 'saved' }))
+    } catch {
+      setSaves((s) => ({ ...s, [question.number]: 'error' }))
+    }
+  }
 
   return (
     <section aria-label="Question breakdown" className="flex flex-col gap-3">
@@ -76,36 +79,35 @@ export default function QuestionBreakdown({ questions }) {
       {questions.map((q, i) => {
         const open = openIndex === i
         return (
-          <Card key={q.n} className="overflow-hidden">
+          <Card key={q.number} className="overflow-hidden">
             <Accordion
-              id={`q${q.n}`}
+              id={`q${q.number}`}
               open={open}
               onToggle={() => setOpenIndex(open ? -1 : i)}
               header={
                 <>
-                  <span className="w-8 flex-none font-mono text-[13px] font-semibold text-indigo-300">Q{q.n}</span>
-                  <span className="min-w-0 flex-[1_1_280px] text-sm font-medium leading-[1.45] text-slate-100">{q.title}</span>
-                  <Chip>{q.topic}</Chip>
-                  <Badge tone={scoreTone(q.sc)}>{q.sc} / 100</Badge>
+                  <span className="w-8 flex-none font-mono text-[13px] font-semibold text-indigo-300">Q{q.number}</span>
+                  <span className="min-w-0 flex-[1_1_280px] text-sm font-medium leading-[1.45] text-slate-100">
+                    {q.question}
+                  </span>
+                  <Chip>{q.category}</Chip>
+                  <Badge tone={scoreTone(q.score)}>{q.score} / 100</Badge>
                 </>
               }
             >
               <div className="flex flex-col gap-5 px-5 pb-[22px] pt-[18px]">
-                <div className="flex flex-col gap-2">
-                  <Caption>Your recorded answer</Caption>
-                  <RecordedPlayer duration={q.dur} />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Caption>AI critique</Caption>
-                  <div className="flex flex-wrap gap-2">
-                    {q.tags.map((t) => (
-                      <Badge key={t.text} tone={t.tone}>
-                        {t.text}
-                      </Badge>
-                    ))}
+                {q.tags.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <Caption>AI critique</Caption>
+                    <div className="flex flex-wrap gap-2">
+                      {q.tags.map((t) => (
+                        <Badge key={t.text} tone={TAG_TONE[t.tone]}>
+                          {t.text}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex flex-wrap gap-4">
                   <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5 rounded-[10px] border border-slate-800 bg-slate-950 p-4">
@@ -113,28 +115,24 @@ export default function QuestionBreakdown({ questions }) {
                       <i className="block size-2 rounded-full bg-amber-500" />
                       Your Answer
                     </span>
-                    <Fragments parts={q.user} />
+                    <Fragments parts={q.your_answer} />
                   </div>
                   <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5 rounded-[10px] border border-emerald-500/30 bg-[#0b1a17] p-4">
                     <span className="flex items-center gap-2 text-[13px] font-semibold text-emerald-300">
                       <i className="block size-2 rounded-full bg-emerald-500" />
                       Optimal Reference Answer
                     </span>
-                    <Fragments parts={q.ref} />
+                    <Fragments parts={q.reference_answer} />
                   </div>
                 </div>
+
+                {q.turns.length > 1 && <FollowUps turns={q.turns.slice(1)} />}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs text-slate-400">
                     Highlights: amber and red mark gaps in your answer, green marks key points to include.
                   </span>
-                  <button
-                    type="button"
-                    className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-indigo-600 bg-indigo-600/[.14] px-4 text-[13px] font-semibold text-indigo-200 hover:bg-indigo-600/[.28]"
-                  >
-                    <Plus className="size-4" aria-hidden="true" />
-                    Add to Mistake Flashcards
-                  </button>
+                  <SaveButton status={saves[q.number]} labels={SAVE_LABELS} onClick={() => save(q)} />
                 </div>
               </div>
             </Accordion>
