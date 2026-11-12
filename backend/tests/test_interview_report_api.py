@@ -131,11 +131,23 @@ def test_each_question_carries_its_turns_critique_and_reference(client, rag, use
     ]
     assert question["turns"][1]["question"] == "What does it cost?"
     assert question["mistake_card"] == {"front": "Cost of an index?", "back": "Slower writes."}
-    assert "".join(f["text"] for f in question["reference_answer"]) == "An index keeps keys sorted and costs writes."
+    assert "".join(f["text"] for f in question["reference_answer"]) == "Reference answer 1."
+
+
+def test_the_report_shows_the_question_banks_reference_answer_not_the_models_copy_of_it(
+    client, rag, use_interviewer, use_writer
+):
+    # A model once rewrote the reference answer in Vietnamese for an English question; the report must not follow it.
+    use_interviewer(evaluation(optimal_reference_answer="Đáp án mẫu do model viết lại, bằng tiếng Việt."))
+    use_writer(synthesis_dict())
+
+    (question,) = finish(client, run(client, [70])).json()["questions"]
+
+    assert "".join(f["text"] for f in question["reference_answer"]) == "Reference answer 1."
 
 
 def test_highlights_split_the_answer_and_unknown_quotes_are_dropped(client, rag, use_interviewer, use_writer):
-    use_interviewer(evaluation(optimal_reference_answer="Keys stay sorted, so reads are fast."))
+    use_interviewer(evaluation())
     use_writer(
         synthesis_dict(
             questions=[
@@ -146,7 +158,7 @@ def test_highlights_split_the_answer_and_unknown_quotes_are_dropped(client, rag,
                         {"quote": "sorted thing", "kind": "gap"},
                         {"quote": "never said this", "kind": "error"},
                     ],
-                    "reference_highlights": [{"quote": "reads are fast"}],
+                    "reference_highlights": [{"quote": "answer 1"}],
                 }
             ]
         )
@@ -162,8 +174,8 @@ def test_highlights_split_the_answer_and_unknown_quotes_are_dropped(client, rag,
         {"text": ", I think.", "kind": None},
     ]
     assert question["reference_answer"] == [
-        {"text": "Keys stay sorted, so ", "kind": None},
-        {"text": "reads are fast", "kind": "key"},
+        {"text": "Reference ", "kind": None},
+        {"text": "answer 1", "kind": "key"},
         {"text": ".", "kind": None},
     ]
     assert question["tags"] == [{"text": "Đúng ý chính", "tone": "good"}]

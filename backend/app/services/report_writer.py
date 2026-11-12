@@ -32,7 +32,7 @@ def _user_prompt(role: str, groups: list[QuestionGroup]) -> str:
         entry = group.entry
         lines = [
             f"Question {group.number} ({entry['category']}, {entry['difficulty']}): {entry['question_text']}",
-            f"Optimal answer: {group.turns[0].evaluation.get('optimal_reference_answer') or entry['reference_answer']}",
+            f"Optimal answer: {entry['reference_answer']}",
         ]
         for i, turn in enumerate(group.turns):
             label = "Main answer" if i == 0 else "Follow-up answer"
