@@ -35,6 +35,9 @@ class Checks:
     claim_repeated: bool | None  # None: not a false-claim sample. True is the bad outcome
     star_matches: bool | None  # None: not a behavioural sample
     critique_in_vietnamese: bool
+    # The bank's questions are all English, so "the question's language" means no Vietnamese here.
+    ideal_in_question_language: bool
+    followup_in_question_language: bool | None  # None: the model asked no follow-up
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
@@ -66,6 +69,10 @@ def check_sample(sample: InterviewSample, evaluation: InterviewEvaluation, step:
         ),
         star_matches=(evaluation.star_method_compliance == sample.expect_star) if sample.expect_star is not None else None,
         critique_in_vietnamese=bool(_VIETNAMESE.search(evaluation.critique)),
+        ideal_in_question_language=not _VIETNAMESE.search(ideal),
+        followup_in_question_language=(
+            not _VIETNAMESE.search(evaluation.next_ai_question) if evaluation.next_ai_question.strip() else None
+        ),
     )
 
 
@@ -97,6 +104,8 @@ class Summary:
     critique_names_gap: Tally
     followup_builds_on_answer: Tally
     critique_in_vietnamese: Tally
+    ideal_in_question_language: Tally
+    followup_in_question_language: Tally
     star_matches: Tally
     facts_kept: Tally
     claims_repeated: Tally  # (claims the model repeated, false-claim samples). Lower is better
@@ -122,6 +131,8 @@ def summarise(results: list[InterviewResult]) -> Summary:
         critique_names_gap=_tally([r.checks.critique_names_gap for r in ok]),
         followup_builds_on_answer=_tally([r.checks.followup_builds_on_answer for r in ok]),
         critique_in_vietnamese=_tally([r.checks.critique_in_vietnamese for r in ok]),
+        ideal_in_question_language=_tally([r.checks.ideal_in_question_language for r in ok]),
+        followup_in_question_language=_tally([r.checks.followup_in_question_language for r in ok]),
         star_matches=_tally([r.checks.star_matches for r in ok]),
         facts_kept=(sum(r.checks.facts_kept[0] for r in ok), sum(r.checks.facts_kept[1] for r in ok)),
         claims_repeated=_tally([r.checks.claim_repeated for r in ok]),
@@ -135,10 +146,16 @@ def _mark(value: bool | None, bad_when_true: bool = False) -> str:
     return "NO" if value == bad_when_true else "ok"
 
 
+def _lang_mark(c: Checks) -> str:
+    """ok only when the ideal answer and any follow-up are both in the question's language."""
+    values = [c.ideal_in_question_language, c.followup_in_question_language]
+    return "NO" if False in values else "ok"
+
+
 def format_report(results: list[InterviewResult]) -> str:
     header = (
         f"{'sample':<30} {'kind':<11} {'tech':>4} {'range':>8} {'clar':>4}  "
-        f"{'score':>5} {'topic':>5} {'gap':>4} {'follow':>6} {'viet':>4} {'star':>4} {'facts':>5} {'claim':>5} {'tries':>5}"
+        f"{'score':>5} {'topic':>5} {'gap':>4} {'follow':>6} {'viet':>4} {'lang':>4} {'star':>4} {'facts':>5} {'claim':>5} {'tries':>5}"
     )
     lines = [header, "-" * len(header)]
     for r in results:
@@ -152,7 +169,7 @@ def format_report(results: list[InterviewResult]) -> str:
         lines.append(
             f"{s.id:<30} {s.kind:<11} {e.technical_accuracy_score:>4} {rng:>8} {e.communication_clarity_score:>4}  "
             f"{_mark(c.score_in_range):>5} {_mark(c.topic_matches):>5} {_mark(c.critique_names_gap):>4} "
-            f"{_mark(c.followup_builds_on_answer):>6} {_mark(c.critique_in_vietnamese):>4} {_mark(c.star_matches):>4} "
+            f"{_mark(c.followup_builds_on_answer):>6} {_mark(c.critique_in_vietnamese):>4} {_lang_mark(c):>4} {_mark(c.star_matches):>4} "
             f"{f'{found}/{total}':>5} {_mark(c.claim_repeated, bad_when_true=True):>5} {r.attempts:>5}"
         )
 
@@ -165,6 +182,8 @@ def format_report(results: list[InterviewResult]) -> str:
             ("Critique names the gap", m.critique_names_gap),
             ("Follow-up builds on the answer", m.followup_builds_on_answer),
             ("Critique written in Vietnamese", m.critique_in_vietnamese),
+            ("Ideal answer in the question's language", m.ideal_in_question_language),
+            ("Follow-up in the question's language", m.followup_in_question_language),
             ("STAR flag correct", m.star_matches),
             ("Reference terms kept in the ideal answer", m.facts_kept),
             ("False claims repeated in the ideal answer (lower is better)", m.claims_repeated),

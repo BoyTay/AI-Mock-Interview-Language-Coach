@@ -189,3 +189,32 @@ def test_details_print_what_the_model_said_so_a_person_can_check_it_for_made_up_
     assert "Buckets are picked from hashCode" in details
     assert "You mentioned buckets" in details
     assert s.id in details
+
+
+def test_ideal_answer_must_be_in_the_language_of_the_question_which_is_english_in_the_bank():
+    vietnamese = evaluation(optimal_reference_answer="useEffect chạy các tác dụng phụ sau khi React render.")
+
+    assert checks().ideal_in_question_language is True
+    assert checks(e=vietnamese).ideal_in_question_language is False
+
+
+def test_follow_up_must_be_in_the_language_of_the_question_even_though_the_critique_is_vietnamese():
+    vietnamese = evaluation(next_ai_question="Bạn có thể giải thích thêm về buckets không?")
+    none = evaluation(should_ask_followup=False, next_ai_question="")
+
+    assert checks().followup_in_question_language is True
+    assert checks(e=vietnamese).followup_in_question_language is False
+    assert checks(e=none).followup_in_question_language is None
+
+
+def test_summary_and_report_count_the_language_slips():
+    s = sample()
+    slip = InterviewResult(s, evaluation(optimal_reference_answer="Đáp án mẫu bằng tiếng Việt."), 1)
+    fine = InterviewResult(s, evaluation(), 1)
+
+    summary = summarise([slip, fine])
+
+    assert summary.ideal_in_question_language == (1, 2)
+    assert summary.followup_in_question_language == (2, 2)
+    assert "Ideal answer in the question's language: 1/2" in format_report([slip, fine])
+    assert "Follow-up in the question's language: 2/2" in format_report([slip, fine])
