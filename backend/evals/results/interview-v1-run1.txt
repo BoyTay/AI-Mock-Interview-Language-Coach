@@ -1,0 +1,96 @@
+Prompt version 1 | model gemini-2.5-flash | 10 answers
+
+sample                         kind        tech    range clar  score topic  gap follow viet star facts claim tries
+------------------------------------------------------------------------------------------------------------------
+i01-good-hashmap               GOOD          95   75-100  100     ok    ok    -      -   ok    -   3/3     -     1
+i02-good-where-having          GOOD         100   75-100  100     ok    ok    -      -   ok    -   2/2     -     1
+i03-medium-useeffect           MEDIUM        65    40-70   90     ok    ok   ok     ok   ok    -   1/2     -     1
+i04-medium-gil                 MEDIUM        45    40-70   80     ok    ok   ok     ok   ok    -   3/3     -     1
+i05-poor-concurrenthashmap     POOR          15     0-35   60     ok    ok   ok     ok   ok    -   2/2     -     1
+i06-poor-acid                  POOR          10     0-35   50     ok    ok   ok     ok   ok    -   4/4     -     1
+i07-off-topic-props-state      OFF_TOPIC      0     0-10    0     ok    ok    -     ok   ok    -   2/2     -     1
+i08-false-claim-volatile       FALSE_CLAIM   15     0-55   80     ok    ok   ok     ok   ok    -   2/2    ok     1
+i09-false-claim-string-stack   FALSE_CLAIM    5     0-55   70     ok    ok   ok     ok   ok    -   2/2    ok     1
+i10-good-star-disagreement     GOOD          95   70-100   95     ok    ok    -      -   ok   ok   4/4     -     1
+
+Score in expected range: 10/10
+On-topic flag correct: 10/10
+Critique names the gap: 6/6
+Follow-up builds on the answer: 7/7
+Critique written in Vietnamese: 10/10
+STAR flag correct: 1/1
+Reference terms kept in the ideal answer: 25/26
+False claims repeated in the ideal answer (lower is better): 0/2
+Mean technical score by kind: FALSE_CLAIM 10.0, GOOD 96.7, MEDIUM 55.0, OFF_TOPIC 0.0, POOR 12.5
+Answers needing a retry: 0 of 10
+Failed: 0 of 10
+
+=== i01-good-hashmap (GOOD) on-topic=True
+Question: How does HashMap work internally in Java?
+Answer: HashMap keeps its entries in an array of buckets. When I call put, it takes the key's hashCode, spreads the bits, and reduces that to a bucket index. If two keys land in the same bucket they are chained in a linked list, and since Java 8 a long chain with more than 8 entries is turned into a balanced tree so lookups stay fast. For get, it finds the bucket and then uses equals to pick the right key from the chain. When the number of entries goes over capacity times the load factor, which is 0.75 by default, the table doubles and everything is rehashed. Average get and put are O(1), and HashMap is not thread-safe.
+Critique: Câu trả lời của ứng viên rất toàn diện và chính xác, bao gồm hầu hết các khía cạnh quan trọng về cách HashMap hoạt động nội bộ. Điểm thiếu sót nhỏ là điều kiện về kích thước bảng tối thiểu để danh sách liên kết chuyển đổi thành cây cân bằng.
+Next: FOLLOW_UP: You mentioned that long chains are converted to balanced trees. Is there any other condition that needs to be met for this conversion to happen, besides the chain length?
+Ideal answer: HashMap stores entries in an array of buckets. The key's hashCode() is spread and reduced to an index; colliding entries are chained in a linked list, which Java 8 converts to a balanced tree when a bucket exceeds 8 entries (and the table is large enough). get() finds the bucket, then uses equals() to locate the key. When the size exceeds capacity times load factor (default 0.75) the table doubles and entries are rehashed. Average get/put is O(1); it is not thread-safe.
+
+=== i02-good-where-having (GOOD) on-topic=True
+Question: What is the difference between WHERE and HAVING?
+Answer: WHERE filters individual rows before any grouping happens, so you cannot use aggregate functions in it. HAVING filters the groups after GROUP BY, so that is where you use COUNT or SUM. For example, to list departments with more than 5 active employees I would write SELECT dept, COUNT(*) FROM employees WHERE active = true GROUP BY dept HAVING COUNT(*) > 5. It is better to put every condition that does not need an aggregate into WHERE, because then fewer rows have to be grouped.
+Critique: Câu trả lời rất chính xác và đầy đủ, bao gồm cả sự khác biệt về thời điểm lọc (trước/sau GROUP BY), khả năng sử dụng hàm tổng hợp và tối ưu hiệu suất. Ví dụ minh họa cũng rất phù hợp.
+Next: MAIN_QUESTION
+Ideal answer: WHERE filters individual rows before grouping and aggregation, so it cannot reference aggregate functions. HAVING filters groups after GROUP BY, so it can use aggregates such as COUNT(*) or SUM(amount). For performance, put conditions that do not depend on aggregates in WHERE so fewer rows are grouped. Example: SELECT dept, COUNT(*) FROM employees WHERE active = true GROUP BY dept HAVING COUNT(*) > 5.
+
+=== i03-medium-useeffect (MEDIUM) on-topic=True
+Question: How does useEffect work and what is the purpose of its dependency array?
+Answer: useEffect is the hook for side effects like fetching data. It runs after the component renders. The dependency array tells React when to run it again: if I pass an empty array it only runs once after the first render, and if I put a variable in the array it runs again when that variable changes. If I do not pass an array at all it runs after every render.
+Critique: Ứng viên đã giải thích đúng về mục đích cơ bản của useEffect và cách mảng phụ thuộc kiểm soát việc thực thi của nó trong các trường hợp khác nhau. Tuy nhiên, câu trả lời còn thiếu các chi tiết quan trọng về chức năng dọn dẹp (cleanup function) và các vấn đề tiềm ẩn do thiếu phụ thuộc (stale closures).
+Next: FOLLOW_UP: You mentioned `useEffect` runs after rendering. What if you need to clean up resources or subscriptions when the component unmounts or before the effect re-runs?
+Ideal answer: useEffect chạy các tác dụng phụ (tìm nạp dữ liệu, đăng ký, hẹn giờ, thao tác DOM thủ công) sau khi React render. Mảng phụ thuộc kiểm soát khi nào nó chạy lại: không có mảng thì chạy sau mỗi lần render, với mảng rỗng thì chỉ chạy sau lần mount đầu tiên, và với các giá trị thì chạy khi bất kỳ giá trị nào trong số đó thay đổi. Hàm có thể trả về một hàm dọn dẹp chạy trước tác dụng phụ tiếp theo và khi unmount, được sử dụng để hủy đăng ký hoặc hủy yêu cầu. Thiếu phụ thuộc gây ra stale closures, vì vậy hãy bao gồm mọi thứ mà tác dụng phụ sử dụng.
+
+=== i04-medium-gil (MEDIUM) on-topic=True
+Question: Explain the Global Interpreter Lock (GIL) and how it affects concurrency in Python.
+Answer: The GIL is a lock in CPython so that only one thread runs Python bytecode at a time. Because of that, threads in Python are basically useless and Python cannot do concurrency at all. If I want to use several CPU cores I should use the multiprocessing module and start separate processes, because each process has its own interpreter and its own GIL.
+Critique: Ứng viên đã giải thích đúng chức năng cốt lõi của GIL và đề xuất sử dụng `multiprocessing` cho các tác vụ nặng về CPU. Tuy nhiên, ứng viên đã sai khi cho rằng các luồng (threads) là vô dụng và Python không thể thực hiện đồng thời (concurrency) chút nào, bỏ qua vai trò quan trọng của luồng trong các tác vụ nặng về I/O. Ứng viên cũng thiếu các giải pháp đồng thời khác như `asyncio` hoặc các extension gốc, cũng như lý do tồn tại của GIL (đơn giản hóa quản lý bộ nhớ).
+Next: FOLLOW_UP: You mentioned that threads are basically useless in Python. Can you elaborate on why that might not always be the case, especially for I/O-bound operations?
+Ideal answer: In CPython the GIL is a mutex that allows only one thread to execute Python bytecode at a time, which simplifies memory management but means threads cannot run CPU-bound Python code in parallel. Threads still help for I/O-bound work because the GIL is released while waiting on I/O. For CPU-bound work use multiprocessing or process pools, or native extensions (NumPy) that release the GIL; asyncio gives efficient single-threaded concurrency for many I/O tasks. Recent Python versions have an experimental free-threaded build that removes the GIL.
+
+=== i05-poor-concurrenthashmap (POOR) on-topic=True
+Question: What is the difference between HashMap and ConcurrentHashMap?
+Answer: I think ConcurrentHashMap is just a newer version of HashMap and it is faster. HashMap is okay for small data, and for big data you should use ConcurrentHashMap. Both of them store key and value pairs.
+Critique: Candidate đã nhận định rằng cả hai đều lưu trữ cặp khóa-giá trị và ConcurrentHashMap nhanh hơn. Tuy nhiên, câu trả lời đã bỏ lỡ điểm khác biệt cốt lõi về an toàn luồng (thread-safety) và cơ chế xử lý đồng thời. Việc cho rằng ConcurrentHashMap chỉ là phiên bản mới hơn hoặc chỉ dùng cho dữ liệu lớn là không chính xác.
+Next: FOLLOW_UP: You mentioned ConcurrentHashMap is faster. Can you elaborate on *why* it's faster, especially in a multi-threaded environment, and what problems HashMap might face in such an environment?
+Ideal answer: HashMap is not thread-safe; concurrent modification can corrupt it or cause lost updates. ConcurrentHashMap is designed for concurrent use: reads are mostly lock-free and writes lock only a small part of the table (CAS and per-bin synchronization in Java 8+), so multiple threads can update different buckets in parallel. It does not allow null keys or values and provides atomic operations like putIfAbsent, compute and merge. It is preferred over Collections.synchronizedMap, which locks the whole map.
+
+=== i06-poor-acid (POOR) on-topic=True
+Question: Explain the ACID properties of a transaction.
+Answer: ACID is something about databases to keep the data safe. I remember A is for atomic, C is for commit, I is for index and D is for data. So when we have ACID the database will not lose anything.
+Critique: Ứng viên đã nhận diện đúng 'A' là Atomicity. Tuy nhiên, các chữ cái 'C', 'I', 'D' đã bị nhận diện sai hoàn toàn (Commit, Index, Data thay vì Consistency, Isolation, Durability). Giải thích về mục đích của ACID còn rất chung chung và thiếu chi tiết.
+Next: FOLLOW_UP: You correctly identified 'A' as Atomicity. Can you explain what Atomicity means, and what 'C', 'I', and 'D' actually stand for in ACID?
+Ideal answer: Atomicity: a transaction is all-or-nothing; if any step fails, all changes are rolled back. Consistency: a transaction moves the database from one valid state to another, respecting constraints and rules. Isolation: concurrent transactions do not see each other's uncommitted intermediate state, to a degree defined by the isolation level. Durability: once committed, changes survive crashes, typically through write-ahead logging. A bank transfer is the classic example: debit and credit must both happen or neither.
+
+=== i07-off-topic-props-state (OFF_TOPIC) on-topic=False
+Question: What is the difference between props and state?
+Answer: Honestly I had a really long day. I had pho for lunch and the weather in Da Nang is so hot right now that I cannot think. Can we skip this one and talk about my salary expectations instead?
+Critique: Ứng viên không trả lời câu hỏi và yêu cầu chuyển sang chủ đề khác.
+Next: FOLLOW_UP: Let's get back to the question: What is the difference between props and state?
+Ideal answer: Props are inputs passed from a parent component to a child; they are read-only from the child's perspective. State is data owned and managed inside a component (with useState) that can change over time and triggers a re-render when updated. Data flows down through props, and children communicate up by calling callback props. If several components need the same data, lift the state up to their closest common parent.
+
+=== i08-false-claim-volatile (FALSE_CLAIM) on-topic=True
+Question: Explain the synchronized keyword and the difference between synchronized and volatile.
+Answer: synchronized is the heavy one because it takes a lock. volatile is just a lighter version of the same thing: when I declare a volatile int counter, the volatile keyword makes counter++ atomic, so ten threads can increment it safely without any lock. I would always prefer volatile over synchronized because it is faster and gives the same thread safety.
+Critique: Thí sinh nhận định `synchronized` liên quan đến khóa và có thể "nặng" là đúng. Tuy nhiên, thí sinh hiểu sai hoàn toàn về `volatile`. `volatile` chỉ đảm bảo khả năng hiển thị và thứ tự của các thao tác đọc/ghi đơn lẻ, chứ không làm cho các thao tác phức hợp như `count++` trở nên nguyên tử (atomic). Việc cho rằng `volatile` cung cấp cùng mức độ an toàn luồng như `synchronized` cho các thao tác phức hợp là sai lầm nghiêm trọng.
+Next: FOLLOW_UP: You stated that `volatile` makes `counter++` atomic. Could you elaborate on why `volatile` is not sufficient for ensuring atomicity in compound operations like `counter++`?
+Ideal answer: synchronized provides mutual exclusion (only one thread holds the monitor lock at a time) and also guarantees visibility: changes made inside the block are visible to the next thread that acquires the same lock. volatile only guarantees visibility and ordering of reads and writes to a single variable; it does not make compound actions such as count++ atomic. Use synchronized or java.util.concurrent atomics/locks for compound operations, and volatile for simple flags written by one thread and read by others.
+
+=== i09-false-claim-string-stack (FALSE_CLAIM) on-topic=True
+Question: Why is String immutable in Java, and what are the benefits?
+Answer: String is immutable because Strings are stored on the stack, and the stack memory cannot be changed once it is written. That is also why StringBuilder is immutable too. The benefit is that it uses less memory than other objects.
+Critique: Ứng viên đã nhầm lẫn về vị trí lưu trữ của String (trên heap chứ không phải stack) và đặc biệt là đã khẳng định StringBuilder là bất biến, điều này không chính xác. Các lợi ích chính của tính bất biến của String cũng chưa được đề cập đầy đủ.
+Next: FOLLOW_UP: You mentioned that StringBuilder is immutable. Could you explain why you believe StringBuilder is immutable, and how it differs from String in that regard?
+Ideal answer: Once a String object is created its content cannot change; operations like concat() return a new object. Immutability makes Strings inherently thread-safe, allows safe caching of the hash code (good for HashMap keys), enables the String pool to share instances, and improves security because values such as class names, file paths or connection URLs cannot be altered after validation.
+
+=== i10-good-star-disagreement (GOOD) on-topic=True
+Question: Describe a disagreement you had with a teammate and how you resolved it. Use the STAR method.
+Answer: Situation: in my last project, a teammate and I disagreed about how to build the export feature. He wanted a quick script, I wanted a proper background job, and we had two weeks before the demo. Task: I needed us to agree on one approach without hurting our working relationship. Action: I asked him to walk me through his reasoning first and realised his main worry was the deadline. I suggested a small experiment, building the background job for one report in a day, and we looked at the result together with our lead. The job was only slightly slower to build and much safer, and he agreed even though a script had been his preference. Result: we shipped on time, the export handled 10x more data in production, and he later used the same pattern for his own feature. I learned to start with the other person's constraints instead of defending my solution.
+Critique: Câu trả lời của ứng viên tuân thủ rất tốt phương pháp STAR, mô tả rõ ràng tình huống, nhiệm vụ, hành động và kết quả. Các hành động được mô tả cụ thể, cho thấy khả năng lắng nghe, đề xuất giải pháp dựa trên dữ liệu (thử nghiệm nhỏ) và đạt được sự đồng thuận. Kết quả cũng rất tích cực, bao gồm cả bài học cá nhân. Điểm trừ nhỏ là có thể làm rõ hơn một chút về việc tập trung vào mục tiêu chung, dù điều này đã được ngụ ý qua việc giải quyết lo lắng về deadline của đồng đội.
+Next: MAIN_QUESTION
+Ideal answer: Situation: a technical or process disagreement, for example about an approach or a deadline. Task: the need to reach a decision without damaging the relationship. Action: listen to understand their reasoning, focus on shared goals and data rather than personalities, propose a small experiment or involve a neutral person if needed, and agree on a decision, committing to it even if it wasn't your preference. Result: the outcome for the project and the relationship, plus what you learned about communication. Avoid portraying the other person as the villain.
