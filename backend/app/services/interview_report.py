@@ -141,7 +141,9 @@ def _mistake_card(group: QuestionGroup) -> MistakeCardOut | None:
 
 def _question_report(group: QuestionGroup, analysis: QuestionAnalysis | None) -> QuestionReport:
     first = group.turns[0]
-    reference = first.evaluation.get("optimal_reference_answer") or group.entry["reference_answer"]
+    # The bank's answer is the standard. The model's own copy of it is not shown: in evaluation runs it was
+    # identical to the bank's answer when it was right, and once came back translated into Vietnamese.
+    reference = group.entry["reference_answer"]
     answer_marks = [(h.quote, h.kind) for h in analysis.answer_highlights] if analysis else []
     reference_marks = [(h.quote, "key") for h in analysis.reference_highlights] if analysis else []
     return QuestionReport(

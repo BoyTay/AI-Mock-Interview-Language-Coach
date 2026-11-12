@@ -9,6 +9,9 @@ from app.services.english_coach import GeminiLlm, Llm
 from app.services.llm_json import MAX_RETRIES, call_json
 
 
+# Raise this whenever _SYSTEM changes, and record the evaluation results for the new version in docs/evals.
+PROMPT_VERSION = "1"
+
 _SYSTEM = """\
 You are a senior engineer running a technical job interview. You assess one candidate answer at a time against a reference answer, then decide whether to probe deeper.
 

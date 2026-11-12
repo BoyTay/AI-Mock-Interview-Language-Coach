@@ -175,3 +175,17 @@ def test_the_prompt_keeps_follow_ups_in_the_questions_language_despite_the_vietn
     system, user = llm.calls[0]
     assert "next_ai_question must be in the same language as the main question" in system
     assert "even though the critique is Vietnamese" in system
+
+
+# Pins the wording of each prompt version. Editing _SYSTEM changes its hash, so this fails until
+# PROMPT_VERSION is raised and the new hash is added; the results in docs/evals are recorded per version.
+PROMPT_HASHES = {
+    "1": "6748cc0efc6bbadd5a777705fef18a41c3f1c960770be4f43258dc01697d8d75",
+}
+
+
+def test_prompt_version_is_bumped_whenever_the_system_prompt_changes():
+    import hashlib
+
+    assert ai_interviewer.PROMPT_VERSION in PROMPT_HASHES
+    assert hashlib.sha256(ai_interviewer._SYSTEM.encode("utf-8")).hexdigest() == PROMPT_HASHES[ai_interviewer.PROMPT_VERSION]

@@ -95,10 +95,20 @@ def test_the_prompt_lists_every_answered_question_with_answers_critiques_and_sco
         "What does it cost?",
         "Slower writes.",
         "Question 2",
-        "An index keeps keys sorted.",
+        "A sorted structure.",
         "BEHAVIORAL",
     ):
         assert part in user
+
+
+def test_the_prompt_gives_the_banks_reference_answer_as_the_optimal_answer_not_the_models_copy():
+    llm = ScriptedLlm(synthesis())
+
+    report_writer.ReportWriter(llm).write("Java Dev", groups())
+
+    user = llm.calls[0][1]
+    assert "Optimal answer: A sorted structure." in user
+    assert "An index keeps keys sorted." not in user
 
 
 def test_the_system_prompt_demands_verbatim_quotes_and_vietnamese_feedback():
