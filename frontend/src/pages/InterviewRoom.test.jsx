@@ -103,12 +103,15 @@ test('the elapsed timer continues from when the session started and ticks', () =
   }
 })
 
-test('the answer box is plain text and code with no voice mode', () => {
-  renderRoom()
+test('the room opens on the text answer box and its Voice tab cannot send until audio upload exists', async () => {
+  const user = renderRoom()
 
   expect(answerBox()).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Voice' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Stop recording' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Voice' }))
+
+  expect(screen.getByRole('button', { name: 'Start recording' })).toBeInTheDocument()
+  expect(send()).toBeDisabled()
+  expect(submitAnswer).not.toHaveBeenCalled()
 })
 
 test('the code block can be added and removed', async () => {
