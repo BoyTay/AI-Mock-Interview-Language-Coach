@@ -246,3 +246,98 @@ describe('releasing the microphone', () => {
     expect(result.current).toMatchObject({ status: 'idle', blob: null })
   })
 })
+
+describe('input level for the waveform', () => {
+  let contexts
+  let sample // byte value every sample of the analyser returns; 128 is silence
+
+  class FakeAudioContext {
+    constructor() {
+      this.close = vi.fn(async () => {})
+      contexts.push(this)
+    }
+
+    createMediaStreamSource() {
+      return { connect: vi.fn(), disconnect: vi.fn() }
+    }
+
+    createAnalyser() {
+      return {
+        fftSize: 0,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        getByteTimeDomainData: (data) => data.fill(sample),
+      }
+    }
+  }
+
+  beforeEach(() => {
+    contexts = []
+    sample = 128
+    vi.useFakeTimers()
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  test('is zero in silence and rises with the voice', async () => {
+    const { result } = renderHook(() => useAudioRecorder())
+    await record(result)
+
+    act(() => vi.advanceTimersByTime(200))
+    expect(result.current.level).toBe(0)
+
+    sample = 255
+    act(() => vi.advanceTimersByTime(200))
+    expect(result.current.level).toBeGreaterThan(0.9)
+    expect(result.current.level).toBeLessThanOrEqual(1)
+
+    sample = 128 + 32
+    act(() => vi.advanceTimersByTime(200))
+    expect(result.current.level).toBeCloseTo(0.25, 1)
+  })
+
+  test('drops to zero and closes the audio context when recording stops', async () => {
+    sample = 255
+    const { result } = renderHook(() => useAudioRecorder())
+    await record(result)
+    act(() => vi.advanceTimersByTime(200))
+
+    act(() => result.current.stop())
+
+    expect(result.current.level).toBe(0)
+    expect(contexts[0].close).toHaveBeenCalledTimes(1)
+  })
+
+  test('closes the audio context and stops measuring when the screen is left', async () => {
+    const { result, unmount } = renderHook(() => useAudioRecorder())
+    await record(result)
+
+    unmount()
+
+    expect(contexts[0].close).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('still records, with a flat level, when the browser has no audio analysis', async () => {
+    vi.stubGlobal('AudioContext', undefined)
+    const { result } = renderHook(() => useAudioRecorder())
+
+    await record(result)
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(result.current.status).toBe('recording')
+    expect(result.current.level).toBe(0)
+  })
+
+  test('still records when the audio context cannot be created', async () => {
+    vi.stubGlobal('AudioContext', function Broken() {
+      throw new Error('blocked')
+    })
+    const { result } = renderHook(() => useAudioRecorder())
+
+    await record(result)
+
+    expect(result.current.status).toBe('recording')
+    expect(result.current.error).toBe('')
+  })
+})

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 // Chrome, Edge and Firefox record webm/opus; Safari only records mp4.
 const PREFERRED_TYPES = ['audio/webm;codecs=opus', 'audio/mp4']
 export const DEFAULT_MAX_SECONDS = 180
+const LEVEL_INTERVAL_MS = 80
 
 export const ERROR_MESSAGES = {
   unsupported: "This browser can't record audio. Try a recent version of Chrome, Edge, Firefox or Safari.",
@@ -36,6 +37,32 @@ function releaseStream(stream) {
   stream?.getTracks().forEach((track) => track.stop())
 }
 
+// Measures how loud the voice is, from 0 (silence) to 1, every LEVEL_INTERVAL_MS.
+// Returns null when the browser can't analyse audio: the recording still works without it.
+function startMeter(stream, onLevel) {
+  if (typeof AudioContext === 'undefined') return null
+  try {
+    const context = new AudioContext()
+    const analyser = context.createAnalyser()
+    analyser.fftSize = 256
+    context.createMediaStreamSource(stream).connect(analyser)
+    const samples = new Uint8Array(analyser.fftSize)
+    const id = setInterval(() => {
+      analyser.getByteTimeDomainData(samples)
+      // Samples are bytes centred on 128; the root mean square of the distance is the loudness.
+      let sum = 0
+      for (const sample of samples) sum += ((sample - 128) / 128) ** 2
+      onLevel(Math.min(1, Math.sqrt(sum / samples.length)))
+    }, LEVEL_INTERVAL_MS)
+    return () => {
+      clearInterval(id)
+      context.close().catch(() => {})
+    }
+  } catch {
+    return null
+  }
+}
+
 export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
   const [status, setStatus] = useState('idle') // idle | recording | recorded | error
   const [error, setError] = useState('')
@@ -43,6 +70,8 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
   const [mimeType, setMimeType] = useState('')
   const [seconds, setSeconds] = useState(0)
   const [limitReached, setLimitReached] = useState(false)
+  const [level, setLevel] = useState(0)
+  const stopMeterRef = useRef(null)
   const recorderRef = useRef(null)
   const streamRef = useRef(null)
   const mountedRef = useRef(true)
@@ -61,6 +90,8 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
       recorder.onstop = null
       if (recorder.state === 'recording') recorder.stop()
     }
+    stopMeterRef.current?.()
+    stopMeterRef.current = null
     releaseStream(streamRef.current)
     streamRef.current = null
   }, [])
@@ -91,8 +122,11 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
     }
     recorder.onstop = () => {
       const type = recorder.mimeType || chosen || ''
+      stopMeterRef.current?.()
+      stopMeterRef.current = null
       releaseStream(streamRef.current)
       streamRef.current = null
+      setLevel(0)
       setMimeType(type)
       setBlob(new Blob(chunks, { type }))
       setStatus('recorded')
@@ -101,6 +135,7 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
     recorderRef.current = recorder
     setSeconds(0)
     setLimitReached(false)
+    stopMeterRef.current = startMeter(stream, setLevel)
     recorder.start()
     setStatus('recording')
   }, [fail])
@@ -117,6 +152,7 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
     setError('')
     setSeconds(0)
     setLimitReached(false)
+    setLevel(0)
     setStatus('idle')
   }, [discard])
 
@@ -141,5 +177,5 @@ export function useAudioRecorder({ maxSeconds = DEFAULT_MAX_SECONDS } = {}) {
     }
   }, [discard])
 
-  return { status, error, blob, mimeType, seconds, limitReached, start, stop, reset }
+  return { status, error, blob, mimeType, seconds, limitReached, level, start, stop, reset }
 }
