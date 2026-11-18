@@ -4,7 +4,8 @@ import pytest
 
 from app.core.errors import AppError
 from app.services import ai_interviewer
-from app.services.english_coach import LlmRateLimitError
+from app.schemas.interview import VoiceEvaluation
+from app.services.english_coach import Audio, LlmRateLimitError
 
 
 def evaluation(**overrides):
@@ -189,3 +190,129 @@ def test_prompt_version_is_bumped_whenever_the_system_prompt_changes():
 
     assert ai_interviewer.PROMPT_VERSION in PROMPT_HASHES
     assert hashlib.sha256(ai_interviewer._SYSTEM.encode("utf-8")).hexdigest() == PROMPT_HASHES[ai_interviewer.PROMPT_VERSION]
+
+
+# --- spoken answers ---
+
+
+def voice_reply(**overrides):
+    base = evaluation()
+    base.update(transcript="I would use a hash map.", fluency_score=72, pronunciation_notes="", filler_words=["um"])
+    base.update(overrides)
+    return base
+
+
+class VoiceLlm:
+    """Like ScriptedLlm, but also takes and records the recording."""
+
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.calls = []
+
+    def __call__(self, system, user, audio=None):
+        self.calls.append((system, user, audio))
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply if isinstance(reply, str) else json.dumps(reply)
+
+
+AUDIO = Audio(b"voice", "audio/webm")
+
+
+def voice_interviewer(llm):
+    return ai_interviewer.Interviewer(ScriptedLlm(), voice_llm=llm)
+
+
+def test_a_voice_reply_is_parsed_into_a_voice_evaluation():
+    result = voice_interviewer(VoiceLlm(voice_reply())).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert isinstance(result, VoiceEvaluation)
+    assert result.transcript == "I would use a hash map."
+    assert result.fluency_score == 72
+    assert result.filler_words == ["um"]
+
+
+def test_the_audio_is_sent_with_the_voice_prompt_and_without_answer_text():
+    llm = VoiceLlm(voice_reply())
+
+    voice_interviewer(llm).evaluate_voice(turn(answer=""), AUDIO)
+
+    system, user, audio = llm.calls[0]
+    assert audio is AUDIO
+    assert system.startswith(ai_interviewer._SYSTEM)
+    assert "transcript" in system and "fluency_score" in system
+    assert "What is a B-Tree index?" in user and "A balanced tree that keeps keys sorted." in user
+    assert "<answer>" not in user
+    assert "attached audio" in user
+
+
+def test_the_voice_prompt_treats_spoken_instructions_as_data():
+    llm = VoiceLlm(voice_reply())
+
+    voice_interviewer(llm).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert "spoken request" in llm.calls[0][0]
+    assert "not instructions" in llm.calls[0][0]
+
+
+def test_the_voice_prompt_keeps_accent_and_fillers_out_of_the_content_scores():
+    llm = VoiceLlm(voice_reply())
+
+    voice_interviewer(llm).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert "not lowered for accent" in llm.calls[0][0]
+
+
+def test_a_fluency_score_out_of_range_is_retried_with_the_audio():
+    llm = VoiceLlm(voice_reply(fluency_score=150), voice_reply())
+
+    result = voice_interviewer(llm).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert result.fluency_score == 72
+    assert len(llm.calls) == 2
+    assert "fluency_score" in llm.calls[1][1]
+    assert llm.calls[1][2] is AUDIO
+
+
+def test_a_voice_rate_limit_becomes_429_with_retry_after():
+    llm = VoiceLlm(LlmRateLimitError(retry_after=9))
+
+    with pytest.raises(AppError) as exc:
+        voice_interviewer(llm).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert exc.value.status_code == 429
+    assert exc.value.headers == {"Retry-After": "9"}
+
+
+def test_text_evaluation_still_uses_the_text_model_only():
+    text, voice = ScriptedLlm(evaluation()), VoiceLlm()
+
+    ai_interviewer.Interviewer(text, voice_llm=voice).evaluate(turn())
+
+    assert len(text.calls) == 1 and voice.calls == []
+
+
+def test_factory_also_builds_a_voice_model_with_the_voice_schema():
+    from app.core.config import Settings
+
+    interviewer = ai_interviewer.build_interviewer(
+        Settings(database_url="sqlite://", gemini_api_key="k", gemini_model="gemini-test")
+    )
+
+    assert interviewer.voice_llm.schema is VoiceEvaluation
+    assert interviewer.voice_llm.model == "gemini-test"
+
+
+# Same idea as PROMPT_HASHES, for the part of the voice prompt added to _SYSTEM.
+VOICE_PROMPT_HASHES = {
+    "1": "05efa33b89c9986fb93535a9a7387930be323ffa24209f0d95abe926423a5b64",
+}
+
+
+def test_voice_prompt_wording_is_pinned_per_version():
+    import hashlib
+
+    assert ai_interviewer.VOICE_PROMPT_VERSION in VOICE_PROMPT_HASHES
+    digest = hashlib.sha256(ai_interviewer._VOICE_ADDENDUM.encode("utf-8")).hexdigest()
+    assert digest == VOICE_PROMPT_HASHES[ai_interviewer.VOICE_PROMPT_VERSION]
