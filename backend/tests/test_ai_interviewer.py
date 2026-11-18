@@ -316,3 +316,24 @@ def test_voice_prompt_wording_is_pinned_per_version():
     assert ai_interviewer.VOICE_PROMPT_VERSION in VOICE_PROMPT_HASHES
     digest = hashlib.sha256(ai_interviewer._VOICE_ADDENDUM.encode("utf-8")).hexdigest()
     assert digest == VOICE_PROMPT_HASHES[ai_interviewer.VOICE_PROMPT_VERSION]
+
+
+def test_gemini_refusing_the_recording_asks_for_a_new_one_instead_of_a_500():
+    from google.genai import errors as genai_errors
+
+    error = genai_errors.ClientError(400, {"error": {"code": 400, "message": "bad audio", "status": "INVALID_ARGUMENT"}})
+
+    with pytest.raises(AppError) as exc:
+        voice_interviewer(VoiceLlm(error)).evaluate_voice(turn(answer=""), AUDIO)
+
+    assert exc.value.status_code == 422
+    assert exc.value.code == "AUDIO_UNREADABLE"
+
+
+def test_a_400_on_a_typed_answer_is_not_turned_into_an_audio_error():
+    from google.genai import errors as genai_errors
+
+    error = genai_errors.ClientError(400, {"error": {"code": 400, "message": "bad", "status": "INVALID_ARGUMENT"}})
+
+    with pytest.raises(genai_errors.ClientError):
+        ai_interviewer.Interviewer(ScriptedLlm(error)).evaluate(turn())

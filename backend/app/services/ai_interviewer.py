@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from google import genai
+from google.genai import errors as genai_errors
 
 from app.core.config import Settings
 from app.core.errors import AppError
@@ -108,15 +109,24 @@ class Interviewer:
 
     def evaluate_voice(self, turn: Turn, audio: Audio) -> VoiceEvaluation:
         """Judge a spoken answer: `turn.answer` is not used, the recording is the answer."""
-        return call_json(
-            self.voice_llm,
-            f"{_SYSTEM}\n\n{_VOICE_ADDENDUM}",
-            _user_prompt(turn, voice=True),
-            VoiceEvaluation,
-            lambda problem: _retry_prompt(turn, problem, voice=True),
-            self.max_retries,
-            audio=audio,
-        )
+        try:
+            return call_json(
+                self.voice_llm,
+                f"{_SYSTEM}\n\n{_VOICE_ADDENDUM}",
+                _user_prompt(turn, voice=True),
+                VoiceEvaluation,
+                lambda problem: _retry_prompt(turn, problem, voice=True),
+                self.max_retries,
+                audio=audio,
+            )
+        except genai_errors.ClientError as exc:
+            # A 400 here means Gemini could not take the recording (corrupt, truncated, or a format it refuses).
+            # The candidate can fix that by recording again, so say so instead of failing with a 500.
+            if exc.code == 400:
+                raise AppError(
+                    422, "AUDIO_UNREADABLE", "The AI could not read the recording. Please record your answer again."
+                ) from exc
+            raise
 
 
 def build_interviewer(settings: Settings) -> Interviewer:
