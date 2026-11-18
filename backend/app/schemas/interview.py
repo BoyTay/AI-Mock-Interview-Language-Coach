@@ -38,6 +38,21 @@ class InterviewEvaluation(BaseModel):
     _score = field_validator("technical_accuracy_score", "communication_clarity_score")(_check_score)
 
 
+class VoiceEvaluation(InterviewEvaluation):
+    """The evaluation of a spoken answer: the usual one plus what the model heard (not scored with the content)."""
+
+    transcript: str  # word for word, in the language spoken
+    fluency_score: int  # pace, hesitation and restarts; does not change the content scores
+    pronunciation_notes: str  # Vietnamese; empty when nothing stood out
+    filler_words: list[str]
+
+    _fluency = field_validator("fluency_score")(_check_score)
+
+    def as_text_evaluation(self) -> InterviewEvaluation:
+        """Only the fields a typed answer has, so the two kinds of answer share one response shape."""
+        return InterviewEvaluation.model_validate(self.model_dump(include=set(InterviewEvaluation.model_fields)))
+
+
 class StartInterviewRequest(BaseModel):
     # Role defaults to the saved profile when omitted.
     target_role: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
@@ -65,10 +80,19 @@ class AnswerRequest(BaseModel):
     answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_ANSWER_CHARS)]
 
 
+class AnswerVoice(BaseModel):
+    message_id: int  # the stored answer, for playing the recording back
+    transcript: str
+    fluency_score: int
+    pronunciation_notes: str
+    filler_words: list[str]
+
+
 class AnswerOut(BaseModel):
     evaluation: InterviewEvaluation
     next_question: QuestionOut | None  # null once the last question has been answered
     session_complete: bool
+    voice: AnswerVoice | None = None  # set when the answer was spoken
 
 
 # --- what the model writes for the report (qualitative parts only; scores are computed in code) ---
