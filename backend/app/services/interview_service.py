@@ -6,9 +6,18 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.models import InterviewSession, SessionMessage, UserProfile
-from app.schemas.interview import AnswerOut, InterviewReport, QuestionOut, StartInterviewOut, StartInterviewRequest
+from app.schemas.interview import (
+    AnswerOut,
+    AnswerVoice,
+    InterviewReport,
+    QuestionOut,
+    StartInterviewOut,
+    StartInterviewRequest,
+)
 from app.services import interview_policy, interview_report
 from app.services.ai_interviewer import Turn
+from app.services.audio_store import GEMINI_MIME_TYPES, AudioStore
+from app.services.english_coach import Audio
 
 SESSION_TYPE = "TECH_INTERVIEW"
 COMPLETED = "COMPLETED"
@@ -192,6 +201,44 @@ def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: in
     db.commit()
 
     return AnswerOut(evaluation=evaluation, next_question=next_question, session_complete=next_question is None)
+
+
+def submit_voice_answer(
+    db: Session, profile: UserProfile, interviewer, store: AudioStore, session_id: int, data: bytes, mime_type: str
+) -> AnswerOut:
+    """Answer by voice: the model hears `data` (already checked to be `mime_type` audio) and writes the transcript."""
+    turn = _open_turn(db, profile, session_id)
+
+    # Judge first and write afterwards, as for a typed answer: a failed call leaves no message and no file.
+    evaluation = interviewer.evaluate_voice(_turn_for(turn, ""), Audio(data, GEMINI_MIME_TYPES[mime_type]))
+    transcript = evaluation.transcript.strip()
+    if not transcript:
+        raise AppError(422, "NO_SPEECH_DETECTED", "We couldn't hear any speech in the recording. Please record again.")
+    step = _decide(turn, evaluation)
+
+    audio_path = store.save(session_id, data, mime_type)
+    try:
+        answer_message, next_question = _add_answer(
+            db, turn, step, text=transcript, evaluation=evaluation.model_dump(), audio_path=audio_path
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        store.delete(audio_path)
+        raise
+
+    return AnswerOut(
+        evaluation=evaluation.as_text_evaluation(),
+        next_question=next_question,
+        session_complete=next_question is None,
+        voice=AnswerVoice(
+            message_id=answer_message.id,
+            transcript=transcript,
+            fluency_score=evaluation.fluency_score,
+            pronunciation_notes=evaluation.pronunciation_notes,
+            filler_words=evaluation.filler_words,
+        ),
+    )
 
 
 def _history(db: Session, session: InterviewSession) -> list[SessionMessage]:

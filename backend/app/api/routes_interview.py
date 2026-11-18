@@ -6,6 +6,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile
 
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
@@ -20,11 +21,14 @@ from app.schemas.interview import (
 )
 from app.services import interview_service
 from app.services.ai_interviewer import Interviewer, Turn, build_interviewer
-from app.services.audio_store import AudioStore
+from app.services.audio_store import MAX_AUDIO_BYTES, AudioStore, read_audio, sniff_audio_type
 from app.services.rag_service import RagService, build_rag_service
 from app.services.report_writer import ReportWriter, build_report_writer
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
+
+# Room for the multipart boundaries and headers around a recording of the maximum size.
+_MULTIPART_OVERHEAD_BYTES = 64 * 1024
 
 
 class _LazyRag:
@@ -125,7 +129,10 @@ async def answer_question(
 ) -> AnswerOut:
     """Answer the pending question with text (JSON `{"answer": ...}`) or by voice (multipart field `audio`)."""
     if _is_multipart(request):
-        raise AppError(501, "NOT_IMPLEMENTED", "Voice answers are not available yet")
+        data, mime_type = await _read_audio_upload(request)
+        return await run_in_threadpool(
+            _submit_voice, db, interviewer, store, session_id, data, mime_type
+        )
     payload = await _read_json_answer(request)
     # The model call can take many seconds: run the blocking service off the event loop.
     return await run_in_threadpool(_submit_text, db, interviewer, session_id, payload.answer)
@@ -133,6 +140,30 @@ async def answer_question(
 
 def _submit_text(db: Session, interviewer: Interviewer, session_id: int, answer: str) -> AnswerOut:
     return interview_service.submit_answer(db, get_default_profile(db), interviewer, session_id, answer)
+
+
+def _submit_voice(
+    db: Session, interviewer: Interviewer, store: AudioStore, session_id: int, data: bytes, mime_type: str
+) -> AnswerOut:
+    return interview_service.submit_voice_answer(
+        db, get_default_profile(db), interviewer, store, session_id, data, mime_type
+    )
+
+
+async def _read_audio_upload(request: Request) -> tuple[bytes, str]:
+    """The recording from the multipart `audio` field and its type, judged by its bytes."""
+    # Refuse a body that announces itself as far too big before the multipart parser spools it to disk.
+    if int(request.headers.get("content-length") or 0) > MAX_AUDIO_BYTES + _MULTIPART_OVERHEAD_BYTES:
+        raise AppError(413, "AUDIO_TOO_LARGE", "The recording is too large. The limit is 10 MB.")
+    form = await request.form()
+    upload = form.get("audio")
+    if not isinstance(upload, UploadFile):
+        raise AppError(422, "AUDIO_REQUIRED", "Attach the recording in the 'audio' form field")
+    data = await run_in_threadpool(read_audio, upload)
+    mime_type = sniff_audio_type(data)
+    if mime_type is None:
+        raise AppError(415, "UNSUPPORTED_AUDIO_TYPE", "Send the recording as webm, mp4, ogg or wav audio")
+    return data, mime_type
 
 
 @router.post("/{session_id}/finish", response_model=InterviewReport)

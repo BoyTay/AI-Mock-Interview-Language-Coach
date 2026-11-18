@@ -311,13 +311,3 @@ def test_a_json_body_without_a_content_type_header_is_still_read_as_json(client,
     response = _post_answer(client, session_id, content=b'{"answer": "My answer."}')
 
     assert response.status_code == 200
-
-
-def test_a_multipart_request_reaches_the_audio_path(client, rag, use_interviewer):
-    use_interviewer()
-    session_id = start(client)["session_id"]
-
-    response = _post_answer(client, session_id, files={"audio": ("a.webm", b"x", "audio/webm")})
-
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"

@@ -2,7 +2,7 @@
 from sqlalchemy import select
 
 from app.models import SessionMessage
-from app.schemas.interview import InterviewEvaluation
+from app.schemas.interview import InterviewEvaluation, VoiceEvaluation
 from app.services.rag_service import RetrievedQuestion
 
 
@@ -45,6 +45,18 @@ def evaluation(**overrides):
     return InterviewEvaluation.model_validate(base)
 
 
+def voice_evaluation(**overrides):
+    base = evaluation().model_dump()
+    base.update(
+        transcript="I would use a hash map.",
+        fluency_score=72,
+        pronunciation_notes="Phát âm rõ.",
+        filler_words=["um"],
+    )
+    base.update(overrides)
+    return VoiceEvaluation.model_validate(base)
+
+
 def follow_up(text):
     return evaluation(should_ask_followup=True, next_ai_question=text)
 
@@ -52,13 +64,23 @@ def follow_up(text):
 class FakeInterviewer:
     """Hands out the scripted evaluations in order (the last one repeats) and records every turn."""
 
-    def __init__(self, *evaluations):
+    def __init__(self, *evaluations, voice=()):
         self.evaluations = list(evaluations) or [evaluation()]
+        self.voice_evaluations = list(voice) or [voice_evaluation()]
         self.turns = []
+        self.voice_turns = []  # (turn, audio) for every spoken answer
 
     def evaluate(self, turn):
         self.turns.append(turn)
         item = self.evaluations.pop(0) if len(self.evaluations) > 1 else self.evaluations[0]
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+    def evaluate_voice(self, turn, audio):
+        self.voice_turns.append((turn, audio))
+        item = self.voice_evaluations.pop(0) if len(self.voice_evaluations) > 1 else self.voice_evaluations[0]
         if isinstance(item, Exception):
             raise item
         return item
@@ -72,6 +94,13 @@ def start(client, **body):
 
 def answer(client, session_id, text="My answer."):
     return client.post(f"/api/v1/interviews/{session_id}/answer", json={"answer": text})
+
+
+def answer_voice(client, session_id, data=None, filename="answer.webm", content_type="audio/webm"):
+    data = webm_bytes() if data is None else data
+    return client.post(
+        f"/api/v1/interviews/{session_id}/answer", files={"audio": (filename, data, content_type)}
+    )
 
 
 def messages(db_session, session_id):
