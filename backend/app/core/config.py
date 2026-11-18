@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = "gemini-embedding-001"
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = "http://localhost:5173"
+    # Where spoken answers are stored. Compose mounts the audio_uploads volume here.
+    upload_dir: str = "/app/uploads"
 
     @property
     def sqlalchemy_url(self) -> str:

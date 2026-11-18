@@ -1,13 +1,24 @@
+from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.models import InterviewSession, SessionMessage, UserProfile
-from app.schemas.interview import AnswerOut, InterviewReport, QuestionOut, StartInterviewOut, StartInterviewRequest
+from app.schemas.interview import (
+    AnswerOut,
+    AnswerVoice,
+    InterviewReport,
+    QuestionOut,
+    StartInterviewOut,
+    StartInterviewRequest,
+)
 from app.services import interview_policy, interview_report
 from app.services.ai_interviewer import Turn
+from app.services.audio_store import GEMINI_MIME_TYPES, AudioStore
+from app.services.english_coach import Audio
 
 SESSION_TYPE = "TECH_INTERVIEW"
 COMPLETED = "COMPLETED"
@@ -75,7 +86,21 @@ def _load_owned_session(db: Session, profile: UserProfile, session_id: int) -> I
     return session
 
 
-def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: int, answer: str) -> AnswerOut:
+@dataclass
+class _PendingTurn:
+    """The question waiting for an answer, and what the model needs to know about it."""
+
+    session: InterviewSession
+    history: list[SessionMessage]
+    pending: SessionMessage
+    plan: list
+    entry: dict
+    main_index: int
+    thread: list[SessionMessage]
+    followups_used: int
+
+
+def _open_turn(db: Session, profile: UserProfile, session_id: int) -> _PendingTurn:
     session = _load_owned_session(db, profile, session_id)
     if session.status != "IN_PROGRESS":
         raise AppError(409, "SESSION_NOT_ACTIVE", "This interview session is not in progress")
@@ -88,58 +113,144 @@ def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: in
     plan = session.question_plan or []
     main_positions = [i for i, m in enumerate(history) if m.sender == "AI" and m.question_type == MAIN_QUESTION]
     main_index = len(main_positions) - 1
-    entry = plan[main_index]
     thread = history[main_positions[-1] :]
-    followups_used = sum(1 for m in thread if m.sender == "AI" and m.question_type == FOLLOW_UP)
-
-    # Judge first and write afterwards: if the model fails, nothing is stored and the answer can be resent.
-    evaluation = interviewer.evaluate(
-        Turn(
-            question=entry["question_text"],
-            category=entry["category"],
-            difficulty=entry["difficulty"],
-            reference_answer=entry["reference_answer"],
-            thread=[(m.sender, m.content_text) for m in thread],
-            answer=answer,
-            followups_used=followups_used,
-            max_followups=interview_policy.MAX_FOLLOWUPS,
-        )
+    return _PendingTurn(
+        session=session,
+        history=history,
+        pending=pending,
+        plan=plan,
+        entry=plan[main_index],
+        main_index=main_index,
+        thread=thread,
+        followups_used=sum(1 for m in thread if m.sender == "AI" and m.question_type == FOLLOW_UP),
     )
-    step = interview_policy.decide_next(
-        evaluation,
-        followups_used=followups_used,
+
+
+def _turn_for(turn: _PendingTurn, answer: str) -> Turn:
+    return Turn(
+        question=turn.entry["question_text"],
+        category=turn.entry["category"],
+        difficulty=turn.entry["difficulty"],
+        reference_answer=turn.entry["reference_answer"],
+        thread=[(m.sender, m.content_text) for m in turn.thread],
+        answer=answer,
+        followups_used=turn.followups_used,
         max_followups=interview_policy.MAX_FOLLOWUPS,
-        asked_questions=[m.content_text for m in history if m.sender == "AI"],
-        has_next_main=main_index + 1 < len(plan),
-        main_question=entry["question_text"],
     )
 
-    db.add(
-        SessionMessage(
-            session_id=session.id,
-            sender="USER",
-            question_type=pending.question_type,
-            content_text=answer,
-            evaluation=evaluation.model_dump(),
-        )
+
+def _decide(turn: _PendingTurn, evaluation) -> interview_policy.NextStep:
+    return interview_policy.decide_next(
+        evaluation,
+        followups_used=turn.followups_used,
+        max_followups=interview_policy.MAX_FOLLOWUPS,
+        asked_questions=[m.content_text for m in turn.history if m.sender == "AI"],
+        has_next_main=turn.main_index + 1 < len(turn.plan),
+        main_question=turn.entry["question_text"],
     )
+
+
+def _add_answer(
+    db: Session,
+    turn: _PendingTurn,
+    step: interview_policy.NextStep,
+    *,
+    text: str,
+    evaluation: dict,
+    audio_path: str | None = None,
+) -> tuple[SessionMessage, QuestionOut | None]:
+    """Stage the answer and the question that follows it. The caller commits."""
+    answer_message = SessionMessage(
+        session_id=turn.session.id,
+        sender="USER",
+        question_type=turn.pending.question_type,
+        content_text=text,
+        audio_path=audio_path,
+        evaluation=evaluation,
+    )
+    db.add(answer_message)
     next_question = None
     if step.kind == FOLLOW_UP:
-        message = SessionMessage(session_id=session.id, sender="AI", question_type=FOLLOW_UP, content_text=step.text)
-        db.add(message)
-        db.flush()
-        next_question = _question_out(message, entry, main_index + 1, len(plan))
-    elif step.kind == MAIN_QUESTION:
-        upcoming = plan[main_index + 1]
         message = SessionMessage(
-            session_id=session.id, sender="AI", question_type=MAIN_QUESTION, content_text=upcoming["question_text"]
+            session_id=turn.session.id, sender="AI", question_type=FOLLOW_UP, content_text=step.text
         )
         db.add(message)
         db.flush()
-        next_question = _question_out(message, upcoming, main_index + 2, len(plan))
+        next_question = _question_out(message, turn.entry, turn.main_index + 1, len(turn.plan))
+    elif step.kind == MAIN_QUESTION:
+        upcoming = turn.plan[turn.main_index + 1]
+        message = SessionMessage(
+            session_id=turn.session.id,
+            sender="AI",
+            question_type=MAIN_QUESTION,
+            content_text=upcoming["question_text"],
+        )
+        db.add(message)
+        db.flush()
+        next_question = _question_out(message, upcoming, turn.main_index + 2, len(turn.plan))
+    db.flush()
+    return answer_message, next_question
+
+
+def submit_answer(db: Session, profile: UserProfile, interviewer, session_id: int, answer: str) -> AnswerOut:
+    turn = _open_turn(db, profile, session_id)
+
+    # Judge first and write afterwards: if the model fails, nothing is stored and the answer can be resent.
+    evaluation = interviewer.evaluate(_turn_for(turn, answer))
+    step = _decide(turn, evaluation)
+    _, next_question = _add_answer(db, turn, step, text=answer, evaluation=evaluation.model_dump())
     db.commit()
 
     return AnswerOut(evaluation=evaluation, next_question=next_question, session_complete=next_question is None)
+
+
+def submit_voice_answer(
+    db: Session, profile: UserProfile, interviewer, store: AudioStore, session_id: int, data: bytes, mime_type: str
+) -> AnswerOut:
+    """Answer by voice: the model hears `data` (already checked to be `mime_type` audio) and writes the transcript."""
+    turn = _open_turn(db, profile, session_id)
+
+    # Judge first and write afterwards, as for a typed answer: a failed call leaves no message and no file.
+    evaluation = interviewer.evaluate_voice(_turn_for(turn, ""), Audio(data, GEMINI_MIME_TYPES[mime_type]))
+    transcript = evaluation.transcript.strip()
+    if not transcript:
+        raise AppError(422, "NO_SPEECH_DETECTED", "We couldn't hear any speech in the recording. Please record again.")
+    step = _decide(turn, evaluation)
+
+    audio_path = store.save(session_id, data, mime_type)
+    try:
+        answer_message, next_question = _add_answer(
+            db, turn, step, text=transcript, evaluation=evaluation.model_dump(), audio_path=audio_path
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        store.delete(audio_path)
+        raise
+
+    return AnswerOut(
+        evaluation=evaluation.as_text_evaluation(),
+        next_question=next_question,
+        session_complete=next_question is None,
+        voice=AnswerVoice(
+            message_id=answer_message.id,
+            transcript=transcript,
+            fluency_score=evaluation.fluency_score,
+            pronunciation_notes=evaluation.pronunciation_notes,
+            filler_words=evaluation.filler_words,
+        ),
+    )
+
+
+def get_answer_audio(
+    db: Session, profile: UserProfile, store: AudioStore, session_id: int, message_id: int
+) -> tuple[Path, str]:
+    """The recording of one of the caller's spoken answers, and its media type."""
+    session = _load_owned_session(db, profile, session_id)
+    message = db.get(SessionMessage, message_id)
+    if message is None or message.session_id != session.id or message.sender != "USER" or not message.audio_path:
+        raise AppError(404, "AUDIO_NOT_FOUND", "Recording not found")
+    return store.open_path(message.audio_path), store.media_type(message.audio_path)
 
 
 def _history(db: Session, session: InterviewSession) -> list[SessionMessage]:

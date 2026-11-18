@@ -1,5 +1,6 @@
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from google import genai
 from google.genai import errors as genai_errors
@@ -16,8 +17,17 @@ DEFAULT_RETRY_AFTER_SECONDS = 30
 # Low for stable bands. Not 0: Gemini can loop on long structured output with greedy decoding.
 TEMPERATURE = 0.1
 
-# (system_prompt, user_prompt) -> raw JSON text from the model.
-Llm = Callable[[str, str], str]
+# (system_prompt, user_prompt) -> raw JSON text from the model. A model that can hear also takes an
+# optional third argument, the recording; text-only callers never pass it.
+Llm = Callable[..., str]
+
+
+@dataclass(frozen=True)
+class Audio:
+    """A recording sent to the model with the prompt."""
+
+    data: bytes
+    mime_type: str
 
 
 class LlmRateLimitError(Exception):
@@ -41,7 +51,10 @@ class GeminiLlm:
         self.temperature = temperature
         self.schema = schema
 
-    def __call__(self, system_prompt: str, user_prompt: str) -> str:
+    def __call__(self, system_prompt: str, user_prompt: str, audio: Audio | None = None) -> str:
+        contents = user_prompt
+        if audio is not None:
+            contents = [types.Part.from_bytes(data=audio.data, mime_type=audio.mime_type), user_prompt]
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=self.temperature,
@@ -50,7 +63,7 @@ class GeminiLlm:
         )
         try:
             response = self.client.models.generate_content(
-                model=self.model, contents=user_prompt, config=config
+                model=self.model, contents=contents, config=config
             )
         except genai_errors.APIError as exc:
             if exc.code == 429:

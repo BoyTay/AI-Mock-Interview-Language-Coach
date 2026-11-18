@@ -8,7 +8,7 @@ from google.genai import errors as genai_errors
 from app.core.config import Settings
 from app.core.errors import AppError, register_error_handlers
 from app.schemas.english import SubmissionType, WritingEvaluation
-from app.services.english_coach import EnglishCoach, GeminiLlm, LlmRateLimitError, build_english_coach
+from app.services.english_coach import Audio, EnglishCoach, GeminiLlm, LlmRateLimitError, build_english_coach
 
 BAD_SENTENCE = "Many software company nowadays uses AI for automate testing process."
 ESSAY = f"{BAD_SENTENCE} This makes release cycles shorter. Teams must still review the output."
@@ -262,6 +262,17 @@ def test_gemini_adapter_requests_low_temperature_json_with_schema():
     assert config.temperature <= 0.2
     assert config.response_mime_type == "application/json"
     assert config.response_schema is WritingEvaluation
+
+
+def test_gemini_adapter_sends_audio_as_an_inline_part_before_the_prompt():
+    client = FakeGenaiClient(result=FakeResult('{"ok": true}'))
+
+    GeminiLlm(client, model="gemini-test")("SYSTEM", "USER", Audio(b"abc", "audio/webm"))
+
+    audio_part, prompt = client.kwargs["contents"]
+    assert audio_part.inline_data.data == b"abc"
+    assert audio_part.inline_data.mime_type == "audio/webm"
+    assert prompt == "USER"
 
 
 def test_gemini_adapter_maps_429_to_rate_limit_error():

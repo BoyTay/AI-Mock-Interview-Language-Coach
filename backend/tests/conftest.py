@@ -12,8 +12,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
+from app.services.audio_store import AudioStore
 from app.main import app
-from app.api.routes_interview import get_interviewer, get_rag_service, get_report_writer
+from app.api.routes_interview import get_audio_store, get_interviewer, get_rag_service, get_report_writer
 from tests.interview_helpers import FakeInterviewer, FakeRag, FakeReportWriter, bank_question
 from app.models import InterviewSession, MistakeCard, SessionMessage, UserProfile, WritingSubmission
 
@@ -65,8 +66,8 @@ def rag():
 
 @pytest.fixture
 def use_interviewer():
-    def install(*evaluations):
-        fake = FakeInterviewer(*evaluations)
+    def install(*evaluations, voice=()):
+        fake = FakeInterviewer(*evaluations, voice=voice)
         app.dependency_overrides[get_interviewer] = lambda: fake
         return fake
 
@@ -81,3 +82,11 @@ def use_writer():
         return fake
 
     return install
+
+
+@pytest.fixture
+def audio_store(tmp_path):
+    """Spoken answers are stored under tmp_path instead of the real upload directory."""
+    store = AudioStore(tmp_path / "uploads")
+    app.dependency_overrides[get_audio_store] = lambda: store
+    return store
