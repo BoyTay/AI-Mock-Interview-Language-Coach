@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
@@ -164,6 +165,18 @@ async def _read_audio_upload(request: Request) -> tuple[bytes, str]:
     if mime_type is None:
         raise AppError(415, "UNSUPPORTED_AUDIO_TYPE", "Send the recording as webm, mp4, ogg or wav audio")
     return data, mime_type
+
+
+@router.get("/{session_id}/answers/{message_id}/audio")
+def answer_audio(
+    session_id: int,
+    message_id: int,
+    db: Session = Depends(get_db),
+    store: AudioStore = Depends(get_audio_store),
+) -> FileResponse:
+    """Play back the recording of one of the caller's spoken answers."""
+    path, media_type = interview_service.get_answer_audio(db, get_default_profile(db), store, session_id, message_id)
+    return FileResponse(path, media_type=media_type)
 
 
 @router.post("/{session_id}/finish", response_model=InterviewReport)

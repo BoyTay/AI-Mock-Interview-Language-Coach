@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -239,6 +240,17 @@ def submit_voice_answer(
             filler_words=evaluation.filler_words,
         ),
     )
+
+
+def get_answer_audio(
+    db: Session, profile: UserProfile, store: AudioStore, session_id: int, message_id: int
+) -> tuple[Path, str]:
+    """The recording of one of the caller's spoken answers, and its media type."""
+    session = _load_owned_session(db, profile, session_id)
+    message = db.get(SessionMessage, message_id)
+    if message is None or message.session_id != session.id or message.sender != "USER" or not message.audio_path:
+        raise AppError(404, "AUDIO_NOT_FOUND", "Recording not found")
+    return store.open_path(message.audio_path), store.media_type(message.audio_path)
 
 
 def _history(db: Session, session: InterviewSession) -> list[SessionMessage]:

@@ -2,7 +2,7 @@
 import pytest
 
 from app.core.errors import AppError
-from app.models import InterviewSession, UserProfile
+from app.models import InterviewSession, SessionMessage, UserProfile
 from app.services.audio_store import MAX_AUDIO_BYTES
 from app.services.english_coach import LlmRateLimitError
 from tests.interview_helpers import (
@@ -270,3 +270,88 @@ def test_a_typed_answer_still_works_beside_the_voice_ones(client, db_session, ra
 
     assert typed["voice"] is None
     assert [m.audio_path is not None for m in messages(db_session, session_id) if m.sender == "USER"] == [True, False]
+
+
+# --- playback ---
+
+
+def playback(client, session_id, message_id):
+    return client.get(f"/api/v1/interviews/{session_id}/answers/{message_id}/audio")
+
+
+def spoken(client, session_id, data=None):
+    return answer_voice(client, session_id, data=data).json()["voice"]["message_id"]
+
+
+def test_the_owner_can_play_back_a_voice_answer(client, rag, use_interviewer, audio_store):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id, webm_bytes(b"my recording"))
+
+    response = playback(client, session_id, message_id)
+
+    assert response.status_code == 200
+    assert response.content == webm_bytes(b"my recording")
+    assert response.headers["content-type"] == "audio/webm"
+
+
+def test_playback_of_another_users_session_is_404(client, db_session, rag, use_interviewer, audio_store):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id)
+    other = UserProfile(full_name="Someone Else", target_role="Dev")
+    db_session.add(other)
+    db_session.flush()
+    db_session.get(InterviewSession, session_id).user_id = other.id
+    db_session.commit()
+
+    response = playback(client, session_id, message_id)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SESSION_NOT_FOUND"
+
+
+def test_playback_with_a_message_id_from_another_session_is_404(client, rag, use_interviewer, audio_store):
+    use_interviewer()
+    first = start(client)["session_id"]
+    second = start(client)["session_id"]
+    message_id = spoken(client, first)
+
+    response = playback(client, second, message_id)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "AUDIO_NOT_FOUND"
+
+
+def test_playback_of_a_text_answer_or_a_question_is_404(client, db_session, rag, use_interviewer, audio_store):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    answer(client, session_id, "Typed.")
+    question, typed = messages(db_session, session_id)[:2]
+
+    assert playback(client, session_id, question.id).status_code == 404
+    assert playback(client, session_id, typed.id).status_code == 404
+    assert playback(client, session_id, 99999).status_code == 404
+
+
+def test_playback_when_the_file_is_missing_is_404(client, db_session, rag, use_interviewer, audio_store):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id)
+    audio_store.delete(messages(db_session, session_id)[1].audio_path)
+
+    assert playback(client, session_id, message_id).status_code == 404
+
+
+def test_playback_never_leaves_the_upload_directory(client, db_session, rag, use_interviewer, audio_store):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id)
+    (audio_store.root.parent / "outside.webm").write_bytes(b"not for you")
+    db_session.get(SessionMessage, message_id).audio_path = "../outside.webm"
+    db_session.commit()
+
+    response = playback(client, session_id, message_id)
+
+    assert response.status_code == 404
+    assert b"not for you" not in response.content
