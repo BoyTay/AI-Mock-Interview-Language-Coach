@@ -4,7 +4,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from app.core.errors import AppError
-from app.services.english_coach import Llm, LlmRateLimitError
+from app.services.english_coach import Audio, Llm, LlmRateLimitError
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -18,14 +18,15 @@ def call_json(
     schema: type[T],
     retry_prompt: Callable[[str], str],
     max_retries: int = MAX_RETRIES,
+    audio: Audio | None = None,
 ) -> T:
     """Ask the model for JSON that fits `schema`, re-asking with the problem spelled out when it does not.
 
-    A rate limit becomes a 429 with Retry-After; replies that stay unusable become a 502.
+    `audio`, when given, goes to the model with every attempt. A rate limit becomes a 429 with Retry-After; replies that stay unusable become a 502.
     """
     for _ in range(max_retries + 1):
         try:
-            raw = llm(system, prompt)
+            raw = llm(system, prompt) if audio is None else llm(system, prompt, audio)
         except LlmRateLimitError as exc:
             raise AppError(
                 429,
