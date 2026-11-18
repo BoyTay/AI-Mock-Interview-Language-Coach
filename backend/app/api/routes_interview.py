@@ -1,9 +1,16 @@
-from fastapi import APIRouter, Depends
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.errors import AppError
 from app.schemas.interview import (
     AnswerOut,
     AnswerRequest,
@@ -13,6 +20,7 @@ from app.schemas.interview import (
 )
 from app.services import interview_service
 from app.services.ai_interviewer import Interviewer, Turn, build_interviewer
+from app.services.audio_store import AudioStore
 from app.services.rag_service import RagService, build_rag_service
 from app.services.report_writer import ReportWriter, build_report_writer
 
@@ -57,14 +65,74 @@ def start_interview(
     return interview_service.start_interview(db, get_default_profile(db), rag, payload)
 
 
-@router.post("/{session_id}/answer", response_model=AnswerOut)
-def answer_question(
+def get_audio_store() -> AudioStore:
+    return AudioStore(Path(get_settings().upload_dir))
+
+
+def _is_multipart(request: Request) -> bool:
+    return request.headers.get("content-type", "").lower().startswith("multipart/form-data")
+
+
+def _is_json(request: Request) -> bool:
+    # Like FastAPI's own body parsing: a request that names no content type is read as JSON too.
+    media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    return media_type == "" or media_type == "application/json" or media_type.endswith("+json")
+
+
+async def _read_json_answer(request: Request) -> AnswerRequest:
+    """Parse the JSON body by hand, failing with the same 422 body FastAPI gives for a declared body."""
+    raw = await request.body()
+    if not raw:
+        raise RequestValidationError([{"type": "missing", "loc": ("body",), "msg": "Field required", "input": None}])
+    body: object = raw
+    if _is_json(request):
+        try:
+            body = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise RequestValidationError(
+                [{"type": "json_invalid", "loc": ("body", exc.pos), "msg": "JSON decode error", "input": {}}]
+            ) from exc
+    try:
+        return AnswerRequest.model_validate(body)
+    except ValidationError as exc:
+        raise RequestValidationError([{**err, "loc": ("body", *err["loc"])} for err in exc.errors()]) from exc
+
+
+_ANSWER_BODY = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {"schema": AnswerRequest.model_json_schema()},
+            "multipart/form-data": {
+                "schema": {
+                    "type": "object",
+                    "properties": {"audio": {"type": "string", "format": "binary"}},
+                    "required": ["audio"],
+                }
+            },
+        },
+    }
+}
+
+
+@router.post("/{session_id}/answer", response_model=AnswerOut, openapi_extra=_ANSWER_BODY)
+async def answer_question(
     session_id: int,
-    payload: AnswerRequest,
+    request: Request,
     db: Session = Depends(get_db),
     interviewer: Interviewer = Depends(get_interviewer),
+    store: AudioStore = Depends(get_audio_store),
 ) -> AnswerOut:
-    return interview_service.submit_answer(db, get_default_profile(db), interviewer, session_id, payload.answer)
+    """Answer the pending question with text (JSON `{"answer": ...}`) or by voice (multipart field `audio`)."""
+    if _is_multipart(request):
+        raise AppError(501, "NOT_IMPLEMENTED", "Voice answers are not available yet")
+    payload = await _read_json_answer(request)
+    # The model call can take many seconds: run the blocking service off the event loop.
+    return await run_in_threadpool(_submit_text, db, interviewer, session_id, payload.answer)
+
+
+def _submit_text(db: Session, interviewer: Interviewer, session_id: int, answer: str) -> AnswerOut:
+    return interview_service.submit_answer(db, get_default_profile(db), interviewer, session_id, answer)
 
 
 @router.post("/{session_id}/finish", response_model=InterviewReport)

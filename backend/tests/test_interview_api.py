@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import select
 
 from app.api.routes_interview import get_rag_service
@@ -245,3 +246,78 @@ def test_a_finished_session_does_not_accept_answers(client, db_session, rag, use
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "SESSION_NOT_ACTIVE"
+
+
+# --- the shape of the errors for a malformed JSON body (pinned before the answer route learned multipart) ---
+
+
+def _post_answer(client, session_id, **kwargs):
+    return client.post(f"/api/v1/interviews/{session_id}/answer", **kwargs)
+
+
+def _validation_details(response):
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    return response.json()["error"]["details"]
+
+
+def test_an_invalid_json_body_is_a_422_that_points_at_the_bad_position(client, rag, use_interviewer):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    response = _post_answer(client, session_id, content=b"{nope", headers={"content-type": "application/json"})
+
+    assert _validation_details(response) == [{"field": "body.1", "message": "JSON decode error"}]
+
+
+def test_a_request_without_a_body_is_a_422_saying_the_body_is_required(client, rag, use_interviewer):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    assert _validation_details(_post_answer(client, session_id)) == [{"field": "body", "message": "Field required"}]
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({}, "Field required"),
+        ({"answer": ""}, "String should have at least 1 character"),
+        ({"answer": "x" * 5001}, "String should have at most 5000 characters"),
+        ({"answer": 5}, "Input should be a valid string"),
+    ],
+)
+def test_a_bad_answer_field_is_a_422_that_names_body_answer(client, rag, use_interviewer, body, message):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    details = _validation_details(_post_answer(client, session_id, json=body))
+
+    assert details == [{"field": "body.answer", "message": message}]
+
+
+def test_a_body_that_is_not_json_or_multipart_is_a_422(client, rag, use_interviewer):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    response = _post_answer(client, session_id, content=b"hello", headers={"content-type": "text/plain"})
+
+    assert _validation_details(response)[0]["field"] == "body"
+
+
+def test_a_json_body_without_a_content_type_header_is_still_read_as_json(client, rag, use_interviewer):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    response = _post_answer(client, session_id, content=b'{"answer": "My answer."}')
+
+    assert response.status_code == 200
+
+
+def test_a_multipart_request_reaches_the_audio_path(client, rag, use_interviewer):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+
+    response = _post_answer(client, session_id, files={"audio": ("a.webm", b"x", "audio/webm")})
+
+    assert response.status_code == 501
+    assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"
