@@ -43,6 +43,9 @@ class _LazyInterviewer:
     def evaluate(self, turn: Turn):
         return build_interviewer(get_settings()).evaluate(turn)
 
+    def evaluate_voice(self, turn: Turn, audio):
+        return build_interviewer(get_settings()).evaluate_voice(turn, audio)
+
 
 class _LazyReportWriter:
     def write(self, role, groups):

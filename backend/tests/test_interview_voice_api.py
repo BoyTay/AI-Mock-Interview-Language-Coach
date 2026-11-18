@@ -355,3 +355,29 @@ def test_playback_never_leaves_the_upload_directory(client, db_session, rag, use
 
     assert response.status_code == 404
     assert b"not for you" not in response.content
+
+
+# --- the real dependency, not the fake ---
+
+
+def test_the_production_interviewer_dependency_can_judge_voice_answers(client, rag, audio_store, monkeypatch):
+    from app.api import routes_interview
+    from tests.interview_helpers import FakeInterviewer
+
+    real = FakeInterviewer()
+    monkeypatch.setattr(routes_interview, "build_interviewer", lambda settings: real)
+    session_id = start(client)["session_id"]  # no use_interviewer: get_interviewer() is the lazy wrapper
+
+    response = answer_voice(client, session_id)
+
+    assert response.status_code == 200
+    assert len(real.voice_turns) == 1
+
+
+def test_the_lazy_interviewer_offers_every_public_method_of_the_real_one():
+    from app.api.routes_interview import get_interviewer
+    from app.services.ai_interviewer import Interviewer
+
+    public = {name for name in vars(Interviewer) if not name.startswith("_") and callable(vars(Interviewer)[name])}
+
+    assert public <= set(dir(get_interviewer()))
