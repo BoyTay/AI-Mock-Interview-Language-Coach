@@ -116,3 +116,20 @@ def finish(client, session_id):
 
 def get_report(client, session_id):
     return client.get(f"/api/v1/interviews/{session_id}/report")
+
+
+# The first bytes of each audio container the API accepts; the rest is filler.
+def webm_bytes(extra=b"voice"):
+    return b"\x1a\x45\xdf\xa3" + extra
+
+
+def mp4_bytes(extra=b"voice"):
+    return b"\x00\x00\x00\x18ftypisom" + extra
+
+
+def ogg_bytes(extra=b"voice"):
+    return b"OggS" + extra
+
+
+def wav_bytes(extra=b"voice"):
+    return b"RIFF\x24\x00\x00\x00WAVE" + extra
