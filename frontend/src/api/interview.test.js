@@ -117,11 +117,11 @@ test('an unknown failure falls back to a generic message', () => {
   expect(describeInterviewError(httpError(500))).toMatch(/something went wrong/i)
 })
 
-test('fetchAnswerAudio downloads the recording of one answer as a blob', async () => {
+test('fetchAnswerAudio downloads the recording of one answer as a blob, allowing a slow connection', async () => {
   const blob = new Blob(['x'], { type: 'audio/webm' })
   const get = vi.spyOn(api, 'get').mockResolvedValue({ data: blob })
   const signal = new AbortController().signal
 
   expect(await fetchAnswerAudio(7, 42, { signal })).toBe(blob)
-  expect(get).toHaveBeenCalledWith('/interviews/7/answers/42/audio', { responseType: 'blob', signal })
+  expect(get).toHaveBeenCalledWith('/interviews/7/answers/42/audio', { responseType: 'blob', signal, timeout: 120000 })
 })

@@ -29,7 +29,7 @@ export default function AudioPlayer({ sessionId, messageId, label = 'Recording' 
   const audioRef = useRef(null)
   const dragging = useRef(false)
   const [attempt, setAttempt] = useState(0)
-  const [status, setStatus] = useState('loading') // loading | ready | error
+  const [status, setStatus] = useState('loading') // loading | ready | error (download) | unplayable (browser)
   const [src, setSrc] = useState(null)
   const [wave, setWave] = useState(null) // { duration, peaks } once decoded
   const [elementDuration, setElementDuration] = useState(NaN)
@@ -144,6 +144,7 @@ export default function AudioPlayer({ sessionId, messageId, label = 'Recording' 
           setCurrent(e.currentTarget.currentTime)
         }}
         onEnded={() => setPlaying(false)}
+        onError={() => src && setStatus('unplayable')}
         onDurationChange={(e) => setElementDuration(e.currentTarget.duration)}
         onLoadedMetadata={(e) => setElementDuration(e.currentTarget.duration)}
       />
@@ -168,7 +169,9 @@ export default function AudioPlayer({ sessionId, messageId, label = 'Recording' 
         </span>
       )}
 
-      {status === 'error' ? (
+      {status === 'unplayable' ? (
+        <p className="m-0 min-w-0 flex-1 text-[13px] text-slate-400">This recording can't be played in this browser.</p>
+      ) : status === 'error' ? (
         <p className="m-0 min-w-0 flex-1 text-[13px] text-slate-400">
           Recording unavailable.{' '}
           <button

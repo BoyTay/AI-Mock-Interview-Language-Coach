@@ -197,3 +197,13 @@ test('without a known duration the slider is disabled and shows dashes', async (
   expect(screen.getByText('00:00 / --:--')).toBeInTheDocument()
   expect(screen.getByRole('slider', { name: 'Recording position' })).toHaveAttribute('aria-disabled', 'true')
 })
+
+test('a recording the browser cannot play says so instead of a dead Play button', async () => {
+  const { audio } = await renderLoaded()
+
+  fireEvent(audio, new Event('error'))
+
+  expect(screen.getByText("This recording can't be played in this browser.")).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Play recording' })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+})

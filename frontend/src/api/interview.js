@@ -4,6 +4,8 @@ import { api } from './client'
 // so all of them can take longer than the default 15s.
 const START_TIMEOUT_MS = 60000
 const AI_TIMEOUT_MS = 90000
+// A recording can be up to 10 MB, which takes longer than the default 15s on a slow connection.
+const AUDIO_TIMEOUT_MS = 120000
 
 export async function fetchProfile() {
   const { data } = await api.get('/profile')
@@ -36,7 +38,11 @@ export async function fetchReport(sessionId) {
 
 // The recording of one spoken answer. Fetched (not linked) so the same bytes feed the player and the waveform.
 export async function fetchAnswerAudio(sessionId, messageId, { signal } = {}) {
-  const { data } = await api.get(`/interviews/${sessionId}/answers/${messageId}/audio`, { responseType: 'blob', signal })
+  const { data } = await api.get(`/interviews/${sessionId}/answers/${messageId}/audio`, {
+    responseType: 'blob',
+    signal,
+    timeout: AUDIO_TIMEOUT_MS,
+  })
   return data
 }
 
