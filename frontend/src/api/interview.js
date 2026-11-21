@@ -34,6 +34,12 @@ export async function fetchReport(sessionId) {
   return data
 }
 
+// The recording of one spoken answer. Fetched (not linked) so the same bytes feed the player and the waveform.
+export async function fetchAnswerAudio(sessionId, messageId, { signal } = {}) {
+  const { data } = await api.get(`/interviews/${sessionId}/answers/${messageId}/audio`, { responseType: 'blob', signal })
+  return data
+}
+
 export function describeInterviewError(error) {
   const response = error.response
   if (!response) {
