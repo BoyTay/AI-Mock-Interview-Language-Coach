@@ -127,7 +127,7 @@ export default function InterviewReport() {
         </div>
       </div>
       <ReportSummary report={report} />
-      <QuestionBreakdown questions={report.questions} />
+      <QuestionBreakdown sessionId={report.session_id} questions={report.questions} />
     </div>
   )
 }
