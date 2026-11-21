@@ -1,3 +1,4 @@
+import copy
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from app.models import InterviewSession, UserProfile
 from tests.interview_helpers import (
     FakeRag,
     answer,
+    answer_voice,
     bank_question,
     evaluation,
     finish,
@@ -16,6 +18,7 @@ from tests.interview_helpers import (
     get_report,
     start,
     synthesis_dict,
+    webm_bytes,
 )
 
 
@@ -326,6 +329,51 @@ def test_report_carries_a_duration(client, rag, use_interviewer, use_writer):
     body = finish(client, run(client, [80])).json()
 
     assert isinstance(body["duration_seconds"], int) and body["duration_seconds"] >= 0
+
+
+# --- recordings ---
+
+
+def test_a_spoken_answer_in_the_report_points_at_its_recording(client, rag, use_interviewer, use_writer, audio_store):
+    use_interviewer()
+    use_writer(synthesis_dict())
+    session_id = start(client)["session_id"]
+    assert answer_voice(client, session_id, webm_bytes(b"spoken words")).status_code == 200
+
+    turn = finish(client, session_id).json()["questions"][0]["turns"][0]
+
+    assert isinstance(turn["audio_message_id"], int)
+    playback = client.get(f"/api/v1/interviews/{session_id}/answers/{turn['audio_message_id']}/audio")
+    assert playback.status_code == 200
+    assert playback.content == webm_bytes(b"spoken words")
+
+
+def test_a_typed_answer_has_no_recording_in_the_report(client, rag, use_interviewer, use_writer):
+    use_interviewer(*scored(80))
+    use_writer(synthesis_dict())
+
+    turn = finish(client, run(client, [80])).json()["questions"][0]["turns"][0]
+
+    assert turn["audio_message_id"] is None
+
+
+def test_a_report_stored_before_recordings_existed_still_loads(client, db_session, rag, use_interviewer, use_writer):
+    use_interviewer(*scored(80))
+    use_writer(synthesis_dict())
+    session_id = run(client, [80])
+    finish(client, session_id)
+    session = db_session.get(InterviewSession, session_id)
+    old = copy.deepcopy(session.feedback_summary)
+    for question in old["questions"]:
+        for turn in question["turns"]:
+            turn.pop("audio_message_id", None)
+    session.feedback_summary = old
+    db_session.commit()
+
+    response = get_report(client, session_id)
+
+    assert response.status_code == 200
+    assert response.json()["questions"][0]["turns"][0]["audio_message_id"] is None
 
 
 # --- ownership ---

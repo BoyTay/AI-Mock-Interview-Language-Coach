@@ -32,6 +32,7 @@ class TurnRecord:
     question: str
     answer: str
     evaluation: dict
+    audio_message_id: int | None = None  # set when the answer was spoken
 
 
 @dataclass
@@ -64,6 +65,7 @@ def group_turns(messages, plan: list[dict]) -> list[QuestionGroup]:
                     question=asked.content_text,
                     answer=message.content_text,
                     evaluation=message.evaluation,
+                    audio_message_id=message.id if message.audio_path else None,
                 )
             )
     return [g for g in groups if g.turns]
@@ -162,6 +164,7 @@ def _question_report(group: QuestionGroup, analysis: QuestionAnalysis | None) ->
                 technical_score=t.evaluation["technical_accuracy_score"],
                 clarity_score=t.evaluation["communication_clarity_score"],
                 critique=t.evaluation["critique"],
+                audio_message_id=t.audio_message_id,
             )
             for t in group.turns
         ],

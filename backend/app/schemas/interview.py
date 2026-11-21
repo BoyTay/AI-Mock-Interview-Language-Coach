@@ -162,6 +162,7 @@ class TurnOut(BaseModel):
     technical_score: int
     clarity_score: int
     critique: str
+    audio_message_id: int | None = None  # the spoken answer's recording; null for typed answers
 
 
 class MistakeCardOut(BaseModel):

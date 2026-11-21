@@ -46,6 +46,7 @@ def groups():
     class Msg:
         def __init__(self, sender, kind, text, evaluation=None):
             self.sender, self.question_type, self.content_text, self.evaluation = sender, kind, text, evaluation
+            self.id, self.audio_path = None, None
 
     messages = [
         Msg("AI", "MAIN_QUESTION", "What is an index?"),
