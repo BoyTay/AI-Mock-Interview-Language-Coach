@@ -9,12 +9,14 @@ PLAN = [
 
 
 def ai(kind, text):
-    return SimpleNamespace(sender="AI", question_type=kind, content_text=text, evaluation=None)
+    return SimpleNamespace(id=None, sender="AI", question_type=kind, content_text=text, evaluation=None, audio_path=None)
 
 
 def user(kind, text, tech=70, clarity=80):
     evaluation = {"technical_accuracy_score": tech, "communication_clarity_score": clarity}
-    return SimpleNamespace(sender="USER", question_type=kind, content_text=text, evaluation=evaluation)
+    return SimpleNamespace(
+        id=None, sender="USER", question_type=kind, content_text=text, evaluation=evaluation, audio_path=None
+    )
 
 
 def test_turns_are_grouped_under_their_main_question():

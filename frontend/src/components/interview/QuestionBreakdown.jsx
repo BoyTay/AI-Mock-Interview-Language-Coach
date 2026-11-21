@@ -8,6 +8,7 @@ import SaveButton from '@/components/writing/SaveButton'
 import { cn } from '@/lib/utils'
 import { conceptCard } from '@/utils/cards'
 import { scoreTone } from '@/utils/tone'
+import AudioPlayer from './AudioPlayer'
 import Chip from './Chip'
 
 const HIGHLIGHT = {
@@ -35,7 +36,7 @@ function Fragments({ parts }) {
   )
 }
 
-function FollowUps({ turns }) {
+function FollowUps({ sessionId, turns }) {
   return (
     <section aria-label="Follow-up exchange" className="flex flex-col gap-3">
       <Caption>Follow-up exchange</Caption>
@@ -43,6 +44,9 @@ function FollowUps({ turns }) {
         <div key={i} className="flex flex-col gap-1.5 rounded-[10px] border border-slate-800 bg-slate-950 p-4">
           <span className="text-[13px] font-semibold text-sky-300">{t.question}</span>
           <span className="whitespace-pre-wrap break-words text-sm leading-normal text-slate-300">{t.answer}</span>
+          {t.audio_message_id != null && (
+            <AudioPlayer sessionId={sessionId} messageId={t.audio_message_id} label={`Follow-up ${i + 1}`} />
+          )}
           <span className="text-[13px] leading-normal text-slate-400">{t.critique}</span>
         </div>
       ))}
@@ -50,7 +54,7 @@ function FollowUps({ turns }) {
   )
 }
 
-export default function QuestionBreakdown({ questions }) {
+export default function QuestionBreakdown({ sessionId, questions }) {
   // Open the weakest question first: that is the one worth reading.
   const weakest = questions.reduce((low, q, i) => (q.score < questions[low].score ? i : low), 0)
   const [openIndex, setOpenIndex] = useState(weakest)
@@ -96,6 +100,13 @@ export default function QuestionBreakdown({ questions }) {
               }
             >
               <div className="flex flex-col gap-5 px-5 pb-[22px] pt-[18px]">
+                {q.turns[0]?.audio_message_id != null && (
+                  <div className="flex flex-col gap-2">
+                    <Caption>Your recorded answer</Caption>
+                    <AudioPlayer sessionId={sessionId} messageId={q.turns[0].audio_message_id} label="Your answer" />
+                  </div>
+                )}
+
                 {q.tags.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <Caption>AI critique</Caption>
@@ -126,7 +137,7 @@ export default function QuestionBreakdown({ questions }) {
                   </div>
                 </div>
 
-                {q.turns.length > 1 && <FollowUps turns={q.turns.slice(1)} />}
+                {q.turns.length > 1 && <FollowUps sessionId={sessionId} turns={q.turns.slice(1)} />}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs text-slate-400">

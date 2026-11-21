@@ -1,11 +1,17 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { createFlashcard } from '@/api/flashcards'
-import { fetchReport } from '@/api/interview'
+import { fetchAnswerAudio, fetchReport } from '@/api/interview'
+import { decodePeaks } from '@/utils/waveform'
 import InterviewReport from './InterviewReport'
 
-vi.mock('@/api/interview', async (importOriginal) => ({ ...(await importOriginal()), fetchReport: vi.fn() }))
+vi.mock('@/api/interview', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchReport: vi.fn(),
+  fetchAnswerAudio: vi.fn(),
+}))
+vi.mock('@/utils/waveform', async (importOriginal) => ({ ...(await importOriginal()), decodePeaks: vi.fn() }))
 vi.mock('@/api/flashcards', () => ({ createFlashcard: vi.fn() }))
 
 const plain = (text) => ({ text, kind: null })
@@ -96,7 +102,24 @@ const openOnes = () => headers().filter((h) => h.getAttribute('aria-expanded') =
 beforeEach(() => {
   fetchReport.mockReset().mockResolvedValue(REPORT)
   createFlashcard.mockReset().mockResolvedValue({ id: 1 })
+  fetchAnswerAudio.mockReset().mockResolvedValue(new Blob(['voice'], { type: 'audio/webm' }))
+  decodePeaks.mockReset().mockResolvedValue({ duration: 10, peaks: [] })
+  URL.createObjectURL = vi.fn(() => 'blob:recording')
+  URL.revokeObjectURL = vi.fn()
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 })
+afterEach(() => {
+  cleanup() // unmount (which pauses the players) while pause is still stubbed
+  vi.restoreAllMocks()
+})
+
+// The weakest question (Q2, open at first) answered by voice, main answer and follow-up.
+function spokenReport() {
+  const report = structuredClone(REPORT)
+  report.questions[1].turns[0].audio_message_id = 42
+  report.questions[1].turns[1].audio_message_id = 43
+  return report
+}
 
 // --- loading the report ---
 
@@ -301,4 +324,32 @@ test('each question keeps its own save status', async () => {
   await user.click(headers()[0])
 
   expect(screen.getByRole('button', { name: 'Add to Mistake Flashcards' })).toBeEnabled()
+})
+
+// --- recordings ---
+
+test('a spoken answer gets a player under "Your recorded answer"', async () => {
+  renderReport({ state: { report: spokenReport() } })
+
+  const panel = document.getElementById('q2-panel')
+  expect(within(panel).getByText('Your recorded answer')).toBeInTheDocument()
+  expect(await within(panel).findByRole('slider', { name: 'Your answer position' })).toBeInTheDocument()
+  expect(within(panel).getAllByRole('button', { name: 'Play recording' }).length).toBeGreaterThan(0)
+  expect(fetchAnswerAudio).toHaveBeenCalledWith(7, 42, expect.anything())
+})
+
+test('a spoken follow-up gets its own player', async () => {
+  renderReport({ state: { report: spokenReport() } })
+
+  const followUps = screen.getByRole('region', { name: 'Follow-up exchange' })
+  expect(await within(followUps).findByRole('slider', { name: 'Follow-up 1 position' })).toBeInTheDocument()
+  expect(fetchAnswerAudio).toHaveBeenCalledWith(7, 43, expect.anything())
+})
+
+test('typed answers and older reports show no player and fetch nothing', () => {
+  renderReport({ state: { report: REPORT } })
+
+  expect(screen.queryByText('Your recorded answer')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Play recording' })).not.toBeInTheDocument()
+  expect(fetchAnswerAudio).not.toHaveBeenCalled()
 })
