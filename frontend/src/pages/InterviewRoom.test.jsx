@@ -460,6 +460,47 @@ describe('reading questions aloud', () => {
     expect(spokenTexts()).toEqual(['What is an index?'])
   })
 
+  test('after answering the prompt the focus moves to the read-aloud toggle', async () => {
+    const user = renderRoom()
+
+    await user.click(card().getByRole('button', { name: 'Keep silent' }))
+
+    expect(card().getByRole('button', { name: 'Read questions aloud' })).toHaveFocus()
+  })
+
+  test('a toggle already chosen does not take the focus when the room opens', () => {
+    localStorage.setItem('devcoach.readAloud', 'off')
+    renderRoom()
+
+    expect(card().getByRole('button', { name: 'Read questions aloud' })).not.toHaveFocus()
+  })
+
+  test('ending the session stops the reading', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    answeredSession()
+    finishInterview.mockReturnValue(new Promise(() => {}))
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'End Session' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'End and see report' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+  })
+
+  test('leaving a session without answers stops the reading', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'End Session' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Leave session' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+  })
+
   test('without an English voice the room is text only', () => {
     fake.setVoices([{ lang: 'vi-VN', name: 'VN' }])
     renderRoom()

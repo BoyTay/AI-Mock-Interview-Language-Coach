@@ -93,6 +93,7 @@ export default function InterviewRoom() {
   }
 
   async function onFinish() {
+    stopSpeaking()
     setFinishing(true)
     setFinishError('')
     try {
@@ -106,6 +107,7 @@ export default function InterviewRoom() {
   }
 
   function leaveWithoutReport() {
+    stopSpeaking()
     clearSession(room.sessionId)
     navigate('/interview')
   }

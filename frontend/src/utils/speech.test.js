@@ -46,3 +46,26 @@ test('blocked storage does not break anything', () => {
   expect(loadReadAloud()).toBeNull()
   expect(() => saveReadAloud('on')).not.toThrow()
 })
+
+test("the browser's default voice comes first within a language", () => {
+  const picked = pickEnglishVoice([{ lang: 'en-US', name: 'Fred' }, { lang: 'en-US', name: 'Samantha', default: true }])
+  expect(picked.name).toBe('Samantha')
+})
+
+test('a voice on the device is preferred to a network one', () => {
+  const picked = pickEnglishVoice([
+    { lang: 'en-US', name: 'Google US English', localService: false },
+    { lang: 'en-US', name: 'Microsoft David', localService: true },
+  ])
+  expect(picked.name).toBe('Microsoft David')
+})
+
+test('macOS novelty voices are never picked', () => {
+  const picked = pickEnglishVoice([
+    { lang: 'en-US', name: 'Albert', localService: true },
+    { lang: 'en-US', name: 'Bad News', localService: true },
+    { lang: 'en-US', name: 'Zarvox', localService: true },
+    { lang: 'en-GB', name: 'Daniel', localService: true },
+  ])
+  expect(picked.name).toBe('Daniel')
+})

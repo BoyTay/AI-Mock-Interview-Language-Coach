@@ -1,4 +1,5 @@
 import { RotateCcw, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import Badge from '@/components/common/Badge'
 import Card from '@/components/common/Card'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,14 @@ export default function InterviewerCard({
 }) {
   const { tone, label, pulse } = STATES[state]
   const on = readAloud === 'on'
+  const toggleRef = useRef(null)
+  const wasAsking = useRef(readAloud === null)
+
+  // Answering the prompt removes the focused button: hand the focus to the toggle that replaces it.
+  useEffect(() => {
+    if (wasAsking.current && readAloud !== null) toggleRef.current?.focus()
+    wasAsking.current = readAloud === null
+  }, [readAloud])
 
   return (
     <Card className="flex flex-col gap-5 p-5">
@@ -73,6 +82,7 @@ export default function InterviewerCard({
       {speechSupported && readAloud !== null && (
         <div className="flex flex-wrap items-center gap-2">
           <button
+            ref={toggleRef}
             type="button"
             aria-pressed={on}
             onClick={() => onReadAloudChange(on ? 'off' : 'on')}
