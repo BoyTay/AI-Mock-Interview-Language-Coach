@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { describeInterviewError, finishInterview, submitAnswer } from '@/api/interview'
 import Card from '@/components/common/Card'
@@ -10,7 +10,9 @@ import InterviewerCard from '@/components/interview/InterviewerCard'
 import QuestionCard from '@/components/interview/QuestionCard'
 import SessionBar from '@/components/interview/SessionBar'
 import Transcript from '@/components/interview/Transcript'
+import { useSpeech } from '@/hooks/useSpeech'
 import { applyAnswer, clearSession, loadSession, saveSession } from '@/utils/interviewSession'
+import { loadReadAloud, saveReadAloud } from '@/utils/speech'
 
 const CODE_LANGUAGES = { SQL: 'SQL', JAVA: 'Java', PYTHON: 'Python', REACT: 'JSX' }
 const DIFFICULTY_LABELS = { JUNIOR: 'Easy', MID: 'Medium', SENIOR: 'Hard' }
@@ -50,6 +52,15 @@ export default function InterviewRoom() {
   const [ending, setEnding] = useState(false) // the End Session confirmation is open
   const [finishing, setFinishing] = useState(false)
   const [finishError, setFinishError] = useState('')
+  const { supported: speechSupported, speaking, speak, stop: stopSpeaking } = useSpeech()
+  const [readAloud, setReadAloud] = useState(loadReadAloud) // 'on' | 'off' | null (not asked yet)
+
+  // Read each new question (main or follow-up) once the user has opted in.
+  const questionId = room?.current?.message_id
+  const questionText = room?.current?.text
+  useEffect(() => {
+    if (readAloud === 'on' && speechSupported && questionText) speak(questionText)
+  }, [questionId, questionText, readAloud, speechSupported, speak])
 
   if (!room) return <NotAvailable sessionId={sessionId} />
 
@@ -57,7 +68,14 @@ export default function InterviewRoom() {
   const answeredAny = transcript.some((m) => m.from === 'user')
   const chips = current ? [current.category, DIFFICULTY_LABELS[current.difficulty] ?? current.difficulty] : []
 
+  function onReadAloudChange(value) {
+    saveReadAloud(value)
+    setReadAloud(value)
+    if (value === 'off') stopSpeaking()
+  }
+
   async function onSend(answer) {
+    stopSpeaking()
     setSending(true)
     setSendError('')
     try {
@@ -92,7 +110,7 @@ export default function InterviewRoom() {
     navigate('/interview')
   }
 
-  const interviewerState = room.complete ? 'done' : sending ? 'thinking' : 'waiting'
+  const interviewerState = room.complete ? 'done' : sending ? 'thinking' : speaking ? 'speaking' : 'waiting'
 
   return (
     <div className="flex w-full max-w-[1360px] flex-col gap-5">
@@ -111,7 +129,14 @@ export default function InterviewRoom() {
       />
       <div className="flex flex-wrap items-stretch gap-5">
         <section aria-label="AI interviewer" className="flex min-w-0 flex-[4_1_380px] flex-col gap-4">
-          <InterviewerCard state={interviewerState} />
+          <InterviewerCard
+            state={interviewerState}
+            speechSupported={speechSupported}
+            readAloud={readAloud}
+            onReadAloudChange={onReadAloudChange}
+            onReplay={() => current && speak(current.text)}
+            canReplay={Boolean(current)}
+          />
           {current && (
             <QuestionCard number={current.index} followUp={current.type === 'FOLLOW_UP'} text={current.text} chips={chips} />
           )}
@@ -133,6 +158,7 @@ export default function InterviewRoom() {
           ) : (
             <AnswerDock
               onSend={onSend}
+              onRecordStart={stopSpeaking}
               sending={sending}
               error={sendError}
               language={CODE_LANGUAGES[current?.category] ?? 'Code'}

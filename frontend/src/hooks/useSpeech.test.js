@@ -96,3 +96,13 @@ test('unmounting cancels the speech', () => {
 
   expect(fake.cancel).toHaveBeenCalled()
 })
+
+test('speak keeps its identity when voices are announced again', () => {
+  const fake = installFakeSpeech()
+  const { result } = renderHook(() => useSpeech())
+  const { speak } = result.current
+
+  fake.setVoices([{ lang: 'en-US', name: 'US again' }])
+
+  expect(result.current.speak).toBe(speak)
+})
