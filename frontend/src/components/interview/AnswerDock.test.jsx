@@ -159,3 +159,17 @@ test('locks the answer mode while an answer is being sent', () => {
   expect(tab('Voice')).toBeDisabled()
   expect(tab('Text & Code')).toBeDisabled()
 })
+
+test('starting or restarting a recording tells the room first', async () => {
+  const onRecordStart = vi.fn()
+  const user = setup({ onRecordStart })
+  await user.click(tab('Voice'))
+
+  await user.click(screen.getByRole('button', { name: 'Start recording' }))
+  expect(onRecordStart).toHaveBeenCalledTimes(1)
+  expect(onRecordStart.mock.invocationCallOrder[0]).toBeLessThan(getUserMedia.mock.invocationCallOrder[0])
+
+  await user.click(await screen.findByRole('button', { name: 'Stop recording' }))
+  await user.click(screen.getByRole('button', { name: 'Re-record' }))
+  expect(onRecordStart).toHaveBeenCalledTimes(2)
+})
