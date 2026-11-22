@@ -33,9 +33,9 @@ function LiveWaveform({ bars, tone, className, level }) {
   )
 }
 
-// Decorative unless `level` is given. Decorative bars animate with the `wave` keyframes
-// unless reduced motion is requested.
-export default function Waveform({ bars = 32, tone = 'indigo', className, level }) {
+// Decorative unless `level` is given. Decorative bars animate with the `wave` keyframes while
+// `active` (and unless reduced motion is requested); inactive they rest low and still.
+export default function Waveform({ bars = 32, tone = 'indigo', className, level, active = true }) {
   if (typeof level === 'number') return <LiveWaveform bars={bars} tone={tone} className={className} level={level} />
   return (
     <div className={cn('flex items-center justify-center gap-1', className)} aria-hidden="true">
@@ -43,7 +43,8 @@ export default function Waveform({ bars = 32, tone = 'indigo', className, level 
         <i
           key={i}
           className={cn(
-            'block w-1 origin-center scale-y-[.6] rounded-sm motion-safe:animate-[wave_1.1s_ease-in-out_infinite]',
+            'block w-1 origin-center rounded-sm',
+            active ? 'scale-y-[.6] motion-safe:animate-[wave_1.1s_ease-in-out_infinite]' : 'scale-y-[.3] opacity-60',
             barColour(tone),
           )}
           style={{ height: `${HEIGHTS[i % HEIGHTS.length]}%`, animationDelay: `${-((i * 37) % 11) / 10}s` }}

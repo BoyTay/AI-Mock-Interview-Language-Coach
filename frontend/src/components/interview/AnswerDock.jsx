@@ -14,7 +14,7 @@ const MODES = [
 // `onSend(answer)` resolves true when the answer was accepted; only then is the draft cleared,
 // so a failed send leaves the candidate's words where they were.
 // `onSendAudio(blob, mimeType)` is optional; without it the Voice tab records but Send answer stays locked.
-export default function AnswerDock({ onSend, onSendAudio, sending, language = 'Code', error }) {
+export default function AnswerDock({ onSend, onSendAudio, onRecordStart, sending, language = 'Code', error }) {
   const [mode, setMode] = useState('text')
   const [text, setText] = useState('')
   const [code, setCode] = useState('')
@@ -63,7 +63,7 @@ export default function AnswerDock({ onSend, onSendAudio, sending, language = 'C
         ))}
       </div>
       {mode === 'voice' ? (
-        <VoiceDock sending={sending} onSendAudio={onSendAudio} />
+        <VoiceDock sending={sending} onSendAudio={onSendAudio} onRecordStart={onRecordStart} />
       ) : (
         <>
           <label htmlFor="answer-text" className="sr-only">

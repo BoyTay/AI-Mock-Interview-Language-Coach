@@ -32,3 +32,10 @@ test('stays hidden from screen readers', () => {
 
   expect(container.firstChild).toHaveAttribute('aria-hidden', 'true')
 })
+
+test('an inactive decorative waveform keeps its bars but does not move', () => {
+  const { container } = render(<Waveform bars={4} active={false} />)
+
+  expect(container.querySelectorAll('i')).toHaveLength(4)
+  expect(container.querySelector('i').className).not.toMatch(/animate-/)
+})

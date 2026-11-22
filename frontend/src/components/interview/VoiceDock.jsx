@@ -14,15 +14,21 @@ const HELP = {
 const LIMIT_MINUTES = DEFAULT_MAX_SECONDS / 60
 
 // `onSendAudio(blob, mimeType)` is optional: until the page can upload audio, Send answer stays locked.
-export default function VoiceDock({ sending, onSendAudio }) {
+// `onRecordStart()` runs just before the microphone opens, so the room can stop reading a question aloud.
+export default function VoiceDock({ sending, onSendAudio, onRecordStart }) {
   const { status, error, blob, mimeType, seconds, limitReached, level, start, stop, reset } = useAudioRecorder()
   const recording = status === 'recording'
   const recorded = status === 'recorded'
   const canSend = Boolean(onSendAudio) && recorded && !sending
 
+  async function startRecording() {
+    onRecordStart?.()
+    await start()
+  }
+
   async function recordAgain() {
     reset()
-    await start()
+    await startRecording()
   }
 
   return (
@@ -61,7 +67,7 @@ export default function VoiceDock({ sending, onSendAudio }) {
           <button
             type="button"
             aria-label={recording ? 'Stop recording' : 'Start recording'}
-            onClick={recording ? stop : start}
+            onClick={recording ? stop : startRecording}
             disabled={sending}
             className="relative flex size-[72px] shrink-0 items-center justify-center rounded-full bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
           >

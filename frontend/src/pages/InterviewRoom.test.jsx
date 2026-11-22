@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { finishInterview, submitAnswer } from '@/api/interview'
 import { createSession, loadSession, saveSession } from '@/utils/interviewSession'
+import { installFakeSpeech } from '@/test/fakeSpeech'
 import InterviewRoom from './InterviewRoom'
 
 vi.mock('@/api/interview', async (importOriginal) => ({
@@ -341,4 +342,170 @@ test('a session this browser does not hold explains it and links back to setup',
   expect(screen.getByRole('heading', { level: 1, name: 'This interview is not available here' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Start a new session' })).toHaveAttribute('href', '/interview')
   expect(screen.getByRole('link', { name: 'View its report' })).toHaveAttribute('href', '/interview/7/report')
+})
+
+describe('reading questions aloud', () => {
+  let fake
+  beforeEach(() => {
+    localStorage.clear()
+    fake = installFakeSpeech()
+  })
+  afterEach(() => {
+    localStorage.clear()
+    delete navigator.mediaDevices
+    vi.unstubAllGlobals()
+  })
+
+  const spokenTexts = () => fake.spoken.map((u) => u.text)
+  const card = () => within(screen.getByRole('region', { name: 'AI interviewer' }))
+
+  test('the first visit asks before reading and reads nothing yet', () => {
+    renderRoom()
+
+    expect(card().getByText('Read questions aloud?')).toBeInTheDocument()
+    expect(fake.spoken).toHaveLength(0)
+  })
+
+  test('choosing Read aloud reads the current question and remembers it', async () => {
+    const user = renderRoom()
+
+    await user.click(card().getByRole('button', { name: 'Read aloud' }))
+
+    expect(spokenTexts()).toEqual(['What is an index?'])
+    expect(localStorage.getItem('devcoach.readAloud')).toBe('on')
+    fake.start()
+    expect(card().getByText('Speaking')).toBeInTheDocument()
+    fake.end()
+    expect(card().getByText('Waiting for you')).toBeInTheDocument()
+  })
+
+  test('Keep silent reads nothing and is remembered', async () => {
+    const user = renderRoom()
+
+    await user.click(card().getByRole('button', { name: 'Keep silent' }))
+
+    expect(fake.spoken).toHaveLength(0)
+    expect(localStorage.getItem('devcoach.readAloud')).toBe('off')
+    expect(card().getByRole('button', { name: 'Read questions aloud' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('with reading on, the next question is read after an answer', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    submitAnswer.mockResolvedValue(next())
+    const user = renderRoom()
+    expect(spokenTexts()).toEqual(['What is an index?'])
+    fake.cancel.mockClear()
+
+    await user.type(answerBox(), 'It speeds up reads.')
+    await user.click(send())
+
+    expect(fake.cancel).toHaveBeenCalled()
+    await screen.findByText('Question 2 of 6')
+    expect(spokenTexts().at(-1)).toBe('What is a join?')
+  })
+
+  test('muting stops reading and later questions stay silent', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    submitAnswer.mockResolvedValue(next())
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(card().getByRole('button', { name: 'Read questions aloud' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+    expect(card().getByText('Waiting for you')).toBeInTheDocument()
+    expect(localStorage.getItem('devcoach.readAloud')).toBe('off')
+    await user.type(answerBox(), 'It speeds up reads.')
+    await user.click(send())
+    await screen.findByText('Question 2 of 6')
+    expect(spokenTexts()).toEqual(['What is an index?'])
+  })
+
+  test('replay reads the question again even when muted', async () => {
+    localStorage.setItem('devcoach.readAloud', 'off')
+    const user = renderRoom()
+
+    await user.click(card().getByRole('button', { name: 'Replay question' }))
+
+    expect(spokenTexts()).toEqual(['What is an index?'])
+  })
+
+  test('starting a recording stops the reading', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(() => new Promise(() => {})) },
+      configurable: true,
+    })
+    vi.stubGlobal('MediaRecorder', class { static isTypeSupported = () => true })
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'Voice' }))
+    await user.click(screen.getByRole('button', { name: 'Start recording' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+    expect(card().getByText('Waiting for you')).toBeInTheDocument()
+  })
+
+  test('voices that arrive late still read the question', () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    fake.setVoices([])
+    renderRoom()
+    expect(fake.spoken).toHaveLength(0)
+
+    fake.setVoices([{ lang: 'en-US', name: 'US' }])
+
+    expect(spokenTexts()).toEqual(['What is an index?'])
+  })
+
+  test('after answering the prompt the focus moves to the read-aloud toggle', async () => {
+    const user = renderRoom()
+
+    await user.click(card().getByRole('button', { name: 'Keep silent' }))
+
+    expect(card().getByRole('button', { name: 'Read questions aloud' })).toHaveFocus()
+  })
+
+  test('a toggle already chosen does not take the focus when the room opens', () => {
+    localStorage.setItem('devcoach.readAloud', 'off')
+    renderRoom()
+
+    expect(card().getByRole('button', { name: 'Read questions aloud' })).not.toHaveFocus()
+  })
+
+  test('ending the session stops the reading', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    answeredSession()
+    finishInterview.mockReturnValue(new Promise(() => {}))
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'End Session' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'End and see report' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+  })
+
+  test('leaving a session without answers stops the reading', async () => {
+    localStorage.setItem('devcoach.readAloud', 'on')
+    const user = renderRoom()
+    fake.start()
+    fake.cancel.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'End Session' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Leave session' }))
+
+    expect(fake.cancel).toHaveBeenCalled()
+  })
+
+  test('without an English voice the room is text only', () => {
+    fake.setVoices([{ lang: 'vi-VN', name: 'VN' }])
+    renderRoom()
+
+    expect(screen.queryByText('Read questions aloud?')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Replay question' })).not.toBeInTheDocument()
+  })
 })
