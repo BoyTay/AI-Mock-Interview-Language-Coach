@@ -18,11 +18,14 @@ Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, d
 | Dashboard | `design/Main.dc.html` | Thẻ số liệu, biểu đồ Radar 5 kỹ năng, biểu đồ đường tiến bộ theo tuần, bảng phiên luyện tập gần đây |
 | Mock Interview | `design/Interview.dc.html` | Phòng phỏng vấn chia đôi (AI Interviewer, transcript, nhập liệu Voice / Text & Code) và báo cáo đánh giá (điểm tổng, STAR, accordion từng câu) |
 | English Writing Coach | `design/Writing.dc.html` | Trình soạn thảo có đồng hồ và bộ đếm từ, chấm band IELTS, sửa lỗi inline, Vocabulary Upgrader |
+| English Speaking Coach | `design/Speaking.dc.html` | Luyện nói Tech Daily Standup: thu âm 0:30-2:00, nghe lại hoặc thu lại, chấm band Fluency / Pronunciation / Vocabulary / Grammar, tốc độ nói và từ đệm, transcript đánh dấu từ phát âm sai và từ đệm, lưu lỗi vào Flashcards; trạng thái chưa thu, đang thu, bản ghi dưới 0:30, đang chấm, có kết quả, micro bị chặn, lỗi chấm (không có tiếng, không đọc được, rate limit). Nút chuyển Writing / Speaking ở đầu trang |
 | Mistake Flashcards | `design/Flashcards.dc.html` | Thẻ lật 3D và 4 mức đánh giá SM-2: Again, Hard, Good, Easy |
 | Session Setup | `design/SessionSetup.dc.html` | Chọn loại phiên (Tech Interview / Tech Daily Standup), vai trò, dán JD, số câu hỏi, độ khó; bảng tóm tắt đầu vào; trạng thái chưa có CV, đang khởi tạo, khởi tạo lỗi |
 | CV & JD Profile | `design/Profile.dc.html` | Upload CV PDF, xem trước văn bản đã bóc tách, sửa tên, vai trò mục tiêu, mục tiêu tiếng Anh; trạng thái chưa có CV, đang tải, lỗi upload (PDF scan, quá dài, quá 5 MB, sai định dạng) |
 
-Tất cả 6 màn dùng chung App Shell (sidebar có thêm mục Session Setup): sidebar thu gọn được, bộ chuyển chế độ Tech Interview / English Coach và widget streak ngày luyện tập.
+Tất cả 7 màn dùng chung App Shell (sidebar có thêm mục Session Setup): sidebar thu gọn được, bộ chuyển chế độ Tech Interview / English Coach và widget streak ngày luyện tập.
+
+Màn English Speaking cần dữ liệu mà API trả lời bằng giọng nói chưa có: band 0-9 cho cả 4 tiêu chí và band tổng, đánh dấu từng từ phát âm sai kèm cách đọc, số lần và vị trí từng từ đệm trong transcript, tốc độ nói, và lời giải thích bằng tiếng Anh. Hiện API chỉ trả `fluency_score` (thang 0-100), `filler_words` (mỗi từ đệm chỉ liệt kê một lần) và một đoạn `pronunciation_notes` viết bằng tiếng Việt.
 
 ## Design System
 
