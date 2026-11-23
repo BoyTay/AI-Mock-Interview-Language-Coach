@@ -81,6 +81,16 @@ body{margin:0;background:#020617}
 .sw a{display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;border-radius:6px;color:#94a3b8;font:500 13px Inter,system-ui,sans-serif;text-decoration:none;white-space:nowrap}
 .sw a:hover{color:#e2e8f0}
 .sw a.on{background:#4f46e5;color:#fff}
+.mk{display:inline;margin:0;padding:0 1px;border:0;border-radius:4px;background:transparent;font:inherit;color:inherit;cursor:pointer}
+.mk-pron{text-decoration:underline wavy #fb7185;text-decoration-thickness:1.5px;text-underline-offset:5px}
+.mk-fill{text-decoration:line-through;text-decoration-color:#64748b;color:#94a3b8}
+button.mk:hover,.mk.sel{background:rgba(99,102,241,.16)}
+.mk.sel{outline:2px solid #818cf8;outline-offset:1px}
+.mk:focus-visible{outline:2px solid #818cf8;outline-offset:1px}
+.mk-tag{display:none;margin-left:4px;padding:0 4px;border-radius:4px;background:#1e293b;color:#cbd5e1;font:500 10px 'JetBrains Mono',monospace;vertical-align:2px}
+button.mk:hover .mk-tag,.mk.sel .mk-tag{display:inline-block}
+.sk{display:block;border-radius:8px;background:#1e293b;animation:bl 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
 </style>
 </helmet>
 
@@ -306,7 +316,174 @@ Record again
 </sc-if>
 </div>
 </section>
-<!-- COLUMNS-RIGHT -->
+<!-- RIGHT: GRADING -->
+<section aria-label="AI grading" style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+<sc-if value="{{noResult}}" hint-placeholder-val="{{ false }}">
+<div class="card" style="padding:28px 24px;display:flex;flex-direction:column;align-items:flex-start;gap:12px">
+<span style="width:40px;height:40px;border-radius:10px;background:rgba(99,102,241,.16);display:flex;align-items:center;justify-content:center">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>
+</span>
+<span style="font-size:16px;font-weight:600;color:#f8fafc">Your feedback will appear here</span>
+<span style="font-size:14px;line-height:1.6;color:#94a3b8;max-width:52ch">Record your update and press Evaluate. You get four band scores, your speaking rate, a transcript with mispronounced and filler words marked, and the mistakes worth saving.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{isGrading}}" hint-placeholder-val="{{ false }}">
+<div class="card" aria-busy="true" aria-label="Grading your recording" style="padding:20px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:center;gap:16px">
+<span class="sk" style="width:96px;height:96px;border-radius:16px;flex:0 0 auto"></span>
+<div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px">
+<span class="sk" style="width:55%;height:16px"></span>
+<span class="sk" style="width:85%;height:12px"></span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<span class="sk" style="height:84px"></span><span class="sk" style="height:84px"></span>
+<span class="sk" style="height:84px"></span><span class="sk" style="height:84px"></span>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span class="sk" style="width:100%;height:12px"></span><span class="sk" style="width:94%;height:12px"></span>
+<span class="sk" style="width:97%;height:12px"></span><span class="sk" style="width:88%;height:12px"></span>
+<span class="sk" style="width:60%;height:12px"></span>
+</div>
+<span style="font-size:13px;color:#94a3b8">Listening to your recording. This usually takes under 20 seconds.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{showResult}}" hint-placeholder-val="{{ true }}">
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:18px;opacity:{{resultOpacity}}" aria-live="polite">
+<sc-if value="{{prevLabel}}" hint-placeholder-val="{{ false }}">
+<span class="bd i" style="align-self:flex-start">Previous result</span>
+</sc-if>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:16px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);flex:0 0 auto">
+<span style="font:500 11px 'JetBrains Mono',monospace;color:#fcd34d;letter-spacing:.08em">BAND</span>
+<span style="font:600 38px 'JetBrains Mono',monospace;color:#fbbf24;letter-spacing:-0.04em;line-height:1.1">6.5</span>
+</div>
+<div style="flex:1 1 200px;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:18px;font-weight:600;color:#f8fafc">Overall band</span>
+<span style="font-size:13px;color:#94a3b8;line-height:1.5">Clear update and a steady pace. Word stress and past-tense endings slip on key words.</span>
+<span style="font-size:12px;color:#34d399;font-weight:500">+0.5 vs your last recording</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<sc-for list="{{criteria}}" as="c" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:10px;background:#020617;border:1px solid #1e293b">
+<span style="font-size:13px;font-weight:500;color:#cbd5e1">{{c.name}}</span>
+<span style="font:600 28px 'JetBrains Mono',monospace;color:{{c.color}};letter-spacing:-0.03em;line-height:1.15">{{c.band}}</span>
+<span style="font-size:12px;line-height:1.45;color:#94a3b8">{{c.note}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding-top:14px;border-top:1px solid #1e293b">
+<span style="display:flex;align-items:center;gap:8px"><span style="font:600 15px 'JetBrains Mono',monospace;color:#f8fafc">{{wpm}} words/min</span><span class="bd {{wpmTone}}" style="height:22px;font-size:11px">{{wpmVerdict}}</span></span>
+<span style="font:600 15px 'JetBrains Mono',monospace;color:#f8fafc">{{fillerCount}} fillers</span>
+<span style="display:flex;align-items:baseline;gap:6px"><span style="font:600 15px 'JetBrains Mono',monospace;color:#f8fafc">1:24</span><span style="font-size:12px;color:#94a3b8">spoken</span></span>
+</div>
+</div>
+
+<div class="card" style="overflow:hidden;opacity:{{resultOpacity}}">
+<div role="tablist" aria-label="Feedback views" style="display:flex;flex-wrap:wrap;padding:0 20px;border-bottom:1px solid #1e293b">
+<button class="tab {{trTab}}" role="tab" aria-selected="{{isTrTab}}" onClick="{{showTr}}">Transcript</button>
+<button class="tab {{miTab}}" role="tab" aria-selected="{{isMiTab}}" onClick="{{showMi}}">Mistakes <span class="bd r" style="height:22px;font-size:11px">{{mistakeCount}}</span></button>
+</div>
+
+<sc-if value="{{isTrTab}}" hint-placeholder-val="{{ true }}">
+<div role="tabpanel" style="padding:20px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:#94a3b8;align-items:center">
+<span>Select a marked word for details.</span>
+<span style="display:flex;align-items:center;gap:6px"><span class="mk mk-pron" style="color:#e2e8f0">word</span>Mispronounced</span>
+<span style="display:flex;align-items:center;gap:6px"><span class="mk mk-fill">um</span>Filler word</span>
+</div>
+<p style="margin:0;font-size:15px;line-height:2.1;color:#e2e8f0;text-wrap:pretty">
+<sc-for list="{{segs}}" as="m" hint-placeholder-count="24"><span><sc-if value="{{m.isTxt}}" hint-placeholder-val="{{ true }}"><span>{{m.t}}</span></sc-if><sc-if value="{{m.isMark}}" hint-placeholder-val="{{ false }}"><button class="mk mk-{{m.kind}} {{m.sel}}" aria-label="{{m.tag}}: {{m.w}}" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.w}}<span class="mk-tag" aria-hidden="true">{{m.tag}}</span></button></sc-if></span></sc-for>
+</p>
+<div aria-live="polite" style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:12px;background:#020617;border:1px solid #4f46e5">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span class="bd {{cur.tone}}">{{cur.kindLabel}}</span>
+<span style="font:600 16px 'JetBrains Mono',monospace;color:#f8fafc">{{cur.w}}</span>
+</div>
+<sc-if value="{{cur.isPron}}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="display:flex;align-items:baseline;gap:8px"><span class="cap">Say it</span><span style="font:600 15px 'JetBrains Mono',monospace;color:#34d399">{{cur.say}}</span></span>
+<span style="font-size:14px;line-height:1.6;color:#cbd5e1">{{cur.note}}</span>
+<div>
+<sc-if value="{{cur.isIdle}}" hint-placeholder-val="{{ true }}">
+<button class="btn-i" onClick="{{cur.save}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+Save to Flashcards
+</button>
+</sc-if>
+<sc-if value="{{cur.isSaving}}" hint-placeholder-val="{{ false }}">
+<button class="btn-i" disabled="{{ true }}" aria-busy="true" style="opacity:.7;cursor:default">Saving...</button>
+</sc-if>
+<sc-if value="{{cur.isSaved}}" hint-placeholder-val="{{ false }}">
+<button class="btn-i done" disabled="{{ true }}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+Saved
+</button>
+</sc-if>
+<sc-if value="{{cur.isFailed}}" hint-placeholder-val="{{ false }}">
+<span role="alert" style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span style="font-size:12px;color:#fb7185">Could not save</span>
+<button class="btn-g" onClick="{{cur.save}}">Retry</button>
+</span>
+</sc-if>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{cur.isFill}}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:500 13px 'JetBrains Mono',monospace;color:#fbbf24">Used {{cur.times}} times</span>
+<span style="font-size:14px;line-height:1.6;color:#cbd5e1">{{cur.note}}</span>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isMiTab}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" style="padding:8px 20px 20px;display:flex;flex-direction:column">
+<sc-for list="{{mistakes}}" as="r" hint-placeholder-count="7">
+<div style="display:flex;flex-direction:column;gap:10px;padding:16px 0;border-top:{{r.border}}">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span class="bd {{r.kTone}}">{{r.kind}}</span>
+<span style="font:500 14px 'JetBrains Mono',monospace;color:#fda4af;text-decoration:line-through;text-decoration-thickness:1.5px">{{r.from}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="becomes"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+<span style="font:600 14px 'JetBrains Mono',monospace;color:#34d399">{{r.to}}</span>
+</div>
+<span style="font-size:13px;line-height:1.55;color:#94a3b8">{{r.why}}</span>
+<div>
+<sc-if value="{{r.isIdle}}" hint-placeholder-val="{{ true }}">
+<button class="btn-i" onClick="{{r.save}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+Save to Flashcards
+</button>
+</sc-if>
+<sc-if value="{{r.isSaving}}" hint-placeholder-val="{{ false }}">
+<button class="btn-i" disabled="{{ true }}" aria-busy="true" style="opacity:.7;cursor:default">Saving...</button>
+</sc-if>
+<sc-if value="{{r.isSaved}}" hint-placeholder-val="{{ false }}">
+<button class="btn-i done" disabled="{{ true }}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+Saved
+</button>
+</sc-if>
+<sc-if value="{{r.isFailed}}" hint-placeholder-val="{{ false }}">
+<span role="alert" style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span style="font-size:12px;color:#fb7185">Could not save</span>
+<button class="btn-g" onClick="{{r.save}}">Retry</button>
+</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</section>
 </div>
 </div>
 </main>
@@ -338,12 +515,73 @@ class Component extends DCLogic {
       const seg = 'M' + x + ' ' + (16 - h).toFixed(1) + ' V' + (16 + h).toFixed(1) + ' ';
       if (i < 17) played += seg; else rest += seg;
     }
+    const hasPrev = !!s.hasPrev;
+    const showResult = view === 'result' || (hasPrev && view !== 'grading');
+    const tab = s.tab || 'transcript';
+    const saved = Object.assign({ g1: 'saved', g2: 'saving', p1: 'failed' }, s.saved || {});
+    const saveCtl = id => {
+      const st = saved[id] || 'idle';
+      return { isIdle: st === 'idle', isSaving: st === 'saving', isSaved: st === 'saved', isFailed: st === 'failed',
+        save: () => this.setState({ saved: Object.assign({}, saved, { [id]: 'saved' }) }) };
+    };
+    // transcript: strings are plain text, P = mispronounced, F = filler
+    const P = (w, id) => ({ w, kind: 'pron', id }), F = w => ({ w, kind: 'fill' });
+    const raw = ['Yesterday I, ', F('um'), ', finish the fix for the login ', P('issue', 'p1'), ' on the staging server. The problem was, ', F('like'),
+      ', a race condition in the session cache, so two requests could write the same token in same time. I changed the cache ', P('architecture', 'p2'),
+      ' a little and added a lock around the write, and I added a test that sends both requests together. The fix is ', P('deployed', 'p3'),
+      ' to staging and, ', F('you know'), ', the tests is passing now, including the old login tests. The dashboard alert we added last sprint caught the problem early, so the impact on users was small. Today I will, ', F('um'),
+      ', watch the error logs for one more full day and do a short report for the team, so everyone knows what happened and how to avoid it next time. After that I will, ',
+      F('um'), ', go back to the password reset ticket that is due on Friday. I have no blocker, but I, ', F('like'),
+      ', need a review from Minh before we release on Thursday, because the lock touches the payment flow too. That is all from me, thanks.'];
+    const PRON = {
+      p1: ['ISH-oo', 'One clear "sh" sound in the middle. It came out as "is-sue", with an s.'],
+      p2: ['AR-ki-tek-cher', 'Stress the first syllable, and "ch" here sounds like "k".'],
+      p3: ['dih-PLOYD', 'The final -ed is a short "d". It was dropped, so it sounded like "deploy".']
+    };
+    const FILL_TIP = 'Pause silently instead. A short pause sounds more confident than a filler.';
+    const fillerCount = raw.filter(x => x.kind === 'fill').length;
+    const words = raw.map(x => typeof x === 'string' ? x : x.w).join('').trim().split(/\s+/).length;
+    const wpm = Math.round(words / (84 / 60));
+    const selIdx = s.sel === undefined ? raw.findIndex(x => x.id === 'p2') : s.sel;
+    const segs = raw.map((x, i) => typeof x === 'string'
+      ? { isTxt: true, isMark: false, t: x }
+      : { isTxt: false, isMark: true, w: x.w, kind: x.kind, tag: x.kind === 'pron' ? 'pron.' : 'filler',
+          on: i === selIdx, sel: i === selIdx ? 'sel' : '', pick: () => this.setState({ sel: i }) });
+    const c = raw[selIdx];
+    const cur = c.kind === 'pron'
+      ? Object.assign({ isPron: true, isFill: false, w: c.w, tone: 'r', kindLabel: 'Pronunciation', say: PRON[c.id][0], note: PRON[c.id][1] }, saveCtl(c.id))
+      : { isPron: false, isFill: true, w: c.w, tone: 'a', kindLabel: 'Filler', times: raw.filter(x => x.w === c.w).length, note: FILL_TIP };
+    const tone = b => b >= 7 ? '#34d399' : (b >= 6 ? '#fbbf24' : '#fb7185');
+    const crit = (name, b, note) => ({ name, band: b.toFixed(1), color: tone(b), note });
+    const criteria = [
+      crit('Fluency', 7.0, 'Steady pace. A few fillers between ideas.'),
+      crit('Pronunciation', 6.0, 'Word stress and final consonants slip on key terms.'),
+      crit('Vocabulary', 6.5, 'Clear technical words. Some collocations are off.'),
+      crit('Grammar', 6.5, 'Past-tense endings and agreement slip.')
+    ];
+    const M = (id, kind, from, to, why) => Object.assign({ id, kind, kTone: kind === 'Grammar' ? 'r' : (kind === 'Vocabulary' ? 's' : 'a'), from, to, why }, saveCtl(id));
+    const mistakes = [
+      M('g1', 'Grammar', 'I finish the fix', 'I finished the fix', 'Yesterday is finished time, so use the past tense. Say the -ed ending clearly.'),
+      M('g2', 'Grammar', 'in same time', 'at the same time', 'The fixed phrase is "at the same time", with "at" and "the".'),
+      M('g3', 'Grammar', 'the tests is passing', 'the tests are passing', '"Tests" is plural, so the verb is "are".'),
+      M('p1', 'Pronunciation', 'issue', 'ISH-oo', PRON.p1[1]),
+      M('p2', 'Pronunciation', 'architecture', 'AR-ki-tek-cher', PRON.p2[1]),
+      M('p3', 'Pronunciation', 'deployed', 'dih-PLOYD', PRON.p3[1]),
+      M('v1', 'Vocabulary', 'do a short report', 'write up a short report', 'In English you write or write up a report. "Do a report" sounds unnatural at work.')
+    ].map((r, i) => Object.assign(r, { border: i === 0 ? '0' : '1px solid #1e293b' }));
     return {
       sbCls: collapsed ? 'c' : '',
       toggle: () => this.setState({ collapsed: !collapsed }),
-      views: VIEWS.map(([k, label]) => ({ label, on: view === k, cls: view === k ? 'on' : '', pick: go(k) })),
+      views: VIEWS.map(([k, label]) => ({ label, on: view === k, cls: view === k ? 'on' : '', pick: () => this.setState({ view: k, evalErr: null, confirmNew: false, hasPrev: false }) })),
       errs: ERRS.map(([k, label]) => ({ label, on: evalErr === k, cls: evalErr === k ? 'on' : '', pick: () => this.setState({ evalErr: k }) })),
       isRecorded: view === 'recorded',
+      noResult: !showResult && view !== 'grading', showResult,
+      prevLabel: hasPrev && view !== 'result', resultOpacity: hasPrev && view !== 'result' ? '.6' : '1',
+      criteria, wpm, wpmVerdict: wpm < 110 ? 'a bit slow' : (wpm > 160 ? 'a bit fast' : 'in range'), wpmTone: wpm < 110 || wpm > 160 ? 'a' : 'g', fillerCount,
+      isTrTab: tab === 'transcript', isMiTab: tab === 'mistakes',
+      trTab: tab === 'transcript' ? 'on' : '', miTab: tab === 'mistakes' ? 'on' : '',
+      showTr: () => this.setState({ tab: 'transcript' }), showMi: () => this.setState({ tab: 'mistakes' }),
+      segs, cur, mistakes, mistakeCount: mistakes.length,
       bars: Array.from({ length: 32 }, (_, i) => i),
       wavePlayed: played, waveRest: rest,
       isReady: view === 'ready', isRecording: view === 'recording', notRecording: view !== 'recording',
