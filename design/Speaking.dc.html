@@ -207,7 +207,106 @@ Speaking
 </a>
 </nav>
 <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
-<!-- COLUMNS -->
+<!-- LEFT: PRACTICE -->
+<section aria-label="Practice" style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div class="card" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span class="bd s">Tech Daily Standup</span>
+<span style="font:400 12px 'JetBrains Mono',monospace;color:#94a3b8">1-2 min</span>
+<div style="flex:1 1 0"></div>
+<button class="btn-g" disabled="{{newDisabled}}" style="opacity:{{newOpacity}}" onClick="{{askNew}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+New prompt
+</button>
+</div>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#f8fafc;text-wrap:pretty">Give your daily standup update: what you finished yesterday, what you will work on today, and any blocker you have.</p>
+<sc-if value="{{confirmNew}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#020617;border:1px solid #334155">
+<span style="flex:1 1 200px;font-size:13px;color:#e2e8f0">Discard this recording? Your result will be cleared too.</span>
+<button class="btn-g" style="color:#fb7185;border-color:rgba(244,63,94,.4)" onClick="{{discard}}">Discard</button>
+<button class="btn-g" onClick="{{cancelNew}}">Cancel</button>
+</div>
+</sc-if>
+</div>
+
+<div class="card" style="padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:14px">
+<sc-if value="{{showMic}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{isRecording}}" hint-placeholder-val="{{ false }}">
+<button class="mic" aria-label="{{micLabel}}" onClick="{{stopRec}}"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+</sc-if>
+<sc-if value="{{notRecording}}" hint-placeholder-val="{{ true }}">
+<button class="btn-p" aria-label="{{micLabel}}" disabled="{{micDisabled}}" onClick="{{startRec}}" style="width:72px;height:72px;padding:0;border-radius:50%;opacity:{{micOpacity}}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button>
+</sc-if>
+<div style="display:flex;align-items:baseline;gap:8px" role="timer" aria-label="Recording time">
+<span style="font:600 28px 'JetBrains Mono',monospace;color:#f8fafc;letter-spacing:-0.02em">{{recTime}}</span>
+<span style="font:400 13px 'JetBrains Mono',monospace;color:#94a3b8">/ 2:00</span>
+</div>
+<sc-if value="{{isRecording}}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%">
+<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#fb7185"><i class="livedot" style="background:#fb7185"></i>Recording</span>
+<div class="wave rose" style="width:100%;max-width:300px;height:40px" aria-hidden="true">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="32"><i></i></sc-for>
+</div>
+<span style="font-size:12px;color:#94a3b8">Stops by itself at 2:00.</span>
+</div>
+</sc-if>
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<span style="font-size:13px;color:#94a3b8;text-align:center">Press to start. Speak for 1-2 minutes.</span>
+</sc-if>
+<sc-if value="{{isBlocked}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="width:100%;display:flex;gap:12px;padding:14px 16px;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.35)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+<div style="flex:1 1 0;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:14px;font-weight:600;color:#f8fafc">Microphone access is blocked</span>
+<span style="font-size:13px;line-height:1.5;color:#cbd5e1">Allow the microphone in your browser's site settings, then try again.</span>
+<div><button class="btn-g" onClick="{{retryMic}}">Try again</button></div>
+</div>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{hasRecording}}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;display:flex;flex-direction:column;gap:14px">
+<span class="cap">Your recording</span>
+<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;background:#020617;border:1px solid #1e293b">
+<button class="icobtn" style="border-radius:50%;background:#4f46e5;border-color:#4f46e5;color:#fff;flex:0 0 auto" aria-label="Play recording">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+</button>
+<svg viewBox="0 0 240 32" preserveAspectRatio="none" style="flex:1 1 0;min-width:80px;height:32px;display:block" aria-hidden="true">
+<path d="{{wavePlayed}}" stroke="#818cf8" stroke-width="2" stroke-linecap="round" fill="none"/>
+<path d="{{waveRest}}" stroke="#475569" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>
+<span style="font:400 12px 'JetBrains Mono',monospace;color:#94a3b8;white-space:nowrap">0:00 / {{dur}}</span>
+</div>
+<sc-if value="{{evalErrText}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display:flex;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.35)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+<span style="font-size:13px;line-height:1.5;color:#e2e8f0">{{evalErrText}}</span>
+</div>
+</sc-if>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<sc-if value="{{showRecordAgain}}" hint-placeholder-val="{{ true }}">
+<button class="btn-g" onClick="{{recordAgain}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+Record again
+</button>
+</sc-if>
+<div style="flex:1 1 0"></div>
+<sc-if value="{{showEvaluate}}" hint-placeholder-val="{{ true }}">
+<button class="btn-p" disabled="{{evalDisabled}}" aria-busy="{{isGrading}}" aria-describedby="len-hint" style="opacity:{{evalOpacity}};cursor:{{evalCursor}}" onClick="{{evaluate}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+{{evalLabel}}
+</button>
+</sc-if>
+</div>
+<sc-if value="{{isShort}}" hint-placeholder-val="{{ false }}">
+<span id="len-hint" style="font-size:12px;color:#fbbf24;text-align:right">Speak for at least 0:30. This recording is 0:18.</span>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</section>
+<!-- COLUMNS-RIGHT -->
 </div>
 </div>
 </main>
@@ -223,12 +322,50 @@ class Component extends DCLogic {
     const go = v => () => this.setState({ view: v, evalErr: null, confirmNew: false });
     const VIEWS = [['ready', 'Ready'], ['recording', 'Recording'], ['recorded', 'Recorded'], ['short', 'Short'], ['grading', 'Grading'], ['result', 'Result'], ['blocked', 'Mic blocked']];
     const ERRS = [[null, 'None'], ['nospeech', 'No speech'], ['unreadable', 'Unreadable'], ['ratelimit', 'Rate limit']];
+    const hasRecording = ['recorded', 'short', 'grading', 'result'].includes(view);
+    const evalDisabled = view === 'short' || view === 'grading';
+    const newDisabled = view === 'recording' || view === 'grading';
+    const ERR_TEXT = {
+      nospeech: 'We could not hear any speech. Record again closer to the microphone.',
+      unreadable: 'We could not read this recording. Try again, or record again.',
+      ratelimit: 'Too many requests. Try again in 42 seconds. Your recording is kept.'
+    };
+    // static waveform for the player: 48 bars, 35% played (same shape as Interview)
+    let played = '', rest = '';
+    for (let i = 0; i < 48; i++) {
+      const x = 2 + i * 5;
+      const h = 4 + Math.abs(Math.sin(i * 0.9) * 8 + Math.sin(i * 0.37) * 6);
+      const seg = 'M' + x + ' ' + (16 - h).toFixed(1) + ' V' + (16 + h).toFixed(1) + ' ';
+      if (i < 17) played += seg; else rest += seg;
+    }
     return {
       sbCls: collapsed ? 'c' : '',
       toggle: () => this.setState({ collapsed: !collapsed }),
       views: VIEWS.map(([k, label]) => ({ label, on: view === k, cls: view === k ? 'on' : '', pick: go(k) })),
       errs: ERRS.map(([k, label]) => ({ label, on: evalErr === k, cls: evalErr === k ? 'on' : '', pick: () => this.setState({ evalErr: k }) })),
-      isRecorded: view === 'recorded'
+      isRecorded: view === 'recorded',
+      bars: Array.from({ length: 32 }, (_, i) => i),
+      wavePlayed: played, waveRest: rest,
+      isReady: view === 'ready', isRecording: view === 'recording', notRecording: view !== 'recording',
+      isBlocked: view === 'blocked', isShort: view === 'short', isGrading: view === 'grading',
+      showMic: !hasRecording,
+      micLabel: view === 'recording' ? 'Stop recording' : 'Start recording',
+      micDisabled: view === 'blocked', micOpacity: view === 'blocked' ? '.45' : '1',
+      recTime: view === 'recording' ? '0:47' : '0:00',
+      startRec: go('recording'), stopRec: go('recorded'), retryMic: go('ready'),
+      hasRecording, dur: view === 'short' ? '0:18' : '1:24',
+      showRecordAgain: ['recorded', 'short', 'result'].includes(view),
+      recordAgain: () => this.setState({ view: 'recording', evalErr: null, confirmNew: false, hasPrev: view === 'result' || !!s.hasPrev }),
+      showEvaluate: ['recorded', 'short', 'grading'].includes(view),
+      evalDisabled, evalOpacity: evalDisabled ? '.45' : '1', evalCursor: evalDisabled ? 'not-allowed' : 'pointer',
+      evalLabel: view === 'grading' ? 'Evaluating...' : 'Evaluate',
+      evaluate: go('grading'),
+      evalErrText: view === 'recorded' && evalErr ? ERR_TEXT[evalErr] : '',
+      newDisabled, newOpacity: newDisabled ? '.45' : '1',
+      confirmNew: !!s.confirmNew,
+      askNew: () => (hasRecording ? this.setState({ confirmNew: true }) : null),
+      cancelNew: () => this.setState({ confirmNew: false }),
+      discard: () => this.setState({ view: 'ready', evalErr: null, confirmNew: false, hasPrev: false })
     };
   }
 }
