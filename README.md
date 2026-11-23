@@ -25,7 +25,7 @@ Nền tảng web luyện phỏng vấn kỹ thuật và tiếng Anh bằng AI, d
 
 Tất cả 7 màn dùng chung App Shell (sidebar có thêm mục Session Setup): sidebar thu gọn được, bộ chuyển chế độ Tech Interview / English Coach và widget streak ngày luyện tập.
 
-Màn English Speaking cần dữ liệu mà API trả lời bằng giọng nói chưa có: đánh dấu từng từ phát âm sai (kèm cách đọc), band Vocabulary và Grammar, tốc độ nói. Hiện API chỉ trả `fluency_score` (0-100), `filler_words` và một đoạn `pronunciation_notes`.
+Màn English Speaking cần dữ liệu mà API trả lời bằng giọng nói chưa có: band 0-9 cho cả 4 tiêu chí và band tổng, đánh dấu từng từ phát âm sai kèm cách đọc, số lần và vị trí từng từ đệm trong transcript, tốc độ nói, và lời giải thích bằng tiếng Anh. Hiện API chỉ trả `fluency_score` (thang 0-100), `filler_words` (mỗi từ đệm chỉ liệt kê một lần) và một đoạn `pronunciation_notes` viết bằng tiếng Việt.
 
 ## Design System
 

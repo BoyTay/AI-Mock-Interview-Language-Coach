@@ -206,7 +206,7 @@ English Coach
 </header>
 
 <div style="padding:24px 32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1440px;width:100%">
-<nav role="group" aria-label="English practice" class="sw">
+<nav role="group" aria-label="English practice" class="sw" style="align-self:flex-start">
 <a href="Writing.dc.html">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>
 Writing
@@ -288,7 +288,7 @@ New prompt
 </svg>
 <span style="font:400 12px 'JetBrains Mono',monospace;color:#94a3b8;white-space:nowrap">0:00 / {{dur}}</span>
 </div>
-<sc-if value="{{evalErrText}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{hasEvalErr}}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="display:flex;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.35)">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
 <span style="font-size:13px;line-height:1.5;color:#e2e8f0">{{evalErrText}}</span>
@@ -318,6 +318,7 @@ Record again
 </section>
 <!-- RIGHT: GRADING -->
 <section aria-label="AI grading" style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">{{resultStatus}}</div>
 
 <sc-if value="{{noResult}}" hint-placeholder-val="{{ false }}">
 <div class="card" style="padding:28px 24px;display:flex;flex-direction:column;align-items:flex-start;gap:12px">
@@ -352,7 +353,7 @@ Record again
 </sc-if>
 
 <sc-if value="{{showResult}}" hint-placeholder-val="{{ true }}">
-<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:18px;opacity:{{resultOpacity}}" aria-live="polite">
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:18px">
 <sc-if value="{{prevLabel}}" hint-placeholder-val="{{ false }}">
 <span class="bd i" style="align-self:flex-start">Previous result</span>
 </sc-if>
@@ -383,7 +384,7 @@ Record again
 </div>
 </div>
 
-<div class="card" style="overflow:hidden;opacity:{{resultOpacity}}">
+<div class="card" style="overflow:hidden">
 <div role="tablist" aria-label="Feedback views" style="display:flex;flex-wrap:wrap;padding:0 20px;border-bottom:1px solid #1e293b">
 <button class="tab {{trTab}}" role="tab" aria-selected="{{isTrTab}}" onClick="{{showTr}}">Transcript</button>
 <button class="tab {{miTab}}" role="tab" aria-selected="{{isMiTab}}" onClick="{{showMi}}">Mistakes <span class="bd r" style="height:22px;font-size:11px">{{mistakeCount}}</span></button>
@@ -435,7 +436,7 @@ Saved
 </sc-if>
 <sc-if value="{{cur.isFill}}" hint-placeholder-val="{{ false }}">
 <div style="display:flex;flex-direction:column;gap:8px">
-<span style="font:500 13px 'JetBrains Mono',monospace;color:#fbbf24">Used {{cur.times}} times</span>
+<span style="font:500 13px 'JetBrains Mono',monospace;color:#fbbf24">{{cur.timesLabel}}</span>
 <span style="font-size:14px;line-height:1.6;color:#cbd5e1">{{cur.note}}</span>
 </div>
 </sc-if>
@@ -449,9 +450,20 @@ Saved
 <div style="display:flex;flex-direction:column;gap:10px;padding:16px 0;border-top:{{r.border}}">
 <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
 <span class="bd {{r.kTone}}">{{r.kind}}</span>
+<sc-if value="{{r.strike}}" hint-placeholder-val="{{ true }}">
+<span style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px">
 <span style="font:500 14px 'JetBrains Mono',monospace;color:#fda4af;text-decoration:line-through;text-decoration-thickness:1.5px">{{r.from}}</span>
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="becomes"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="becomes"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
 <span style="font:600 14px 'JetBrains Mono',monospace;color:#34d399">{{r.to}}</span>
+</span>
+</sc-if>
+<sc-if value="{{r.isPron}}" hint-placeholder-val="{{ false }}">
+<span style="display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:10px">
+<span style="font:600 14px 'JetBrains Mono',monospace;color:#f8fafc">{{r.from}}</span>
+<span class="cap">Say it</span>
+<span style="font:600 14px 'JetBrains Mono',monospace;color:#34d399">{{r.to}}</span>
+</span>
+</sc-if>
 </div>
 <span style="font-size:13px;line-height:1.55;color:#94a3b8">{{r.why}}</span>
 <div>
@@ -538,6 +550,7 @@ class Component extends DCLogic {
       p2: ['AR-ki-tek-cher', 'Stress the first syllable, and "ch" here sounds like "k".'],
       p3: ['dih-PLOYD', 'The final -ed is a short "d". It was dropped, so it sounded like "deploy".']
     };
+    const usedLabel = n => n === 1 ? 'Used once' : 'Used ' + n + ' times';
     const FILL_TIP = 'Pause silently instead. A short pause sounds more confident than a filler.';
     const fillerCount = raw.filter(x => x.kind === 'fill').length;
     const words = raw.map(x => typeof x === 'string' ? x : x.w).join('').trim().split(/\s+/).length;
@@ -550,7 +563,7 @@ class Component extends DCLogic {
     const c = raw[selIdx];
     const cur = c.kind === 'pron'
       ? Object.assign({ isPron: true, isFill: false, w: c.w, tone: 'r', kindLabel: 'Pronunciation', say: PRON[c.id][0], note: PRON[c.id][1] }, saveCtl(c.id))
-      : { isPron: false, isFill: true, w: c.w, tone: 'a', kindLabel: 'Filler', times: raw.filter(x => x.w === c.w).length, note: FILL_TIP };
+      : { isPron: false, isFill: true, w: c.w, tone: 'a', kindLabel: 'Filler', timesLabel: usedLabel(raw.filter(x => x.w === c.w).length), note: FILL_TIP };
     const tone = b => b >= 7 ? '#34d399' : (b >= 6 ? '#fbbf24' : '#fb7185');
     const crit = (name, b, note) => ({ name, band: b.toFixed(1), color: tone(b), note });
     const criteria = [
@@ -559,7 +572,8 @@ class Component extends DCLogic {
       crit('Vocabulary', 6.5, 'Clear technical words. Some collocations are off.'),
       crit('Grammar', 6.5, 'Past-tense endings and agreement slip.')
     ];
-    const M = (id, kind, from, to, why) => Object.assign({ id, kind, kTone: kind === 'Grammar' ? 'r' : (kind === 'Vocabulary' ? 's' : 'a'), from, to, why }, saveCtl(id));
+    const KIND_TONE = { Grammar: 'i', Pronunciation: 'r', Vocabulary: 's' };
+    const M = (id, kind, from, to, why) => Object.assign({ id, kind, kTone: KIND_TONE[kind], strike: kind !== 'Pronunciation', isPron: kind === 'Pronunciation', from, to, why }, saveCtl(id));
     const mistakes = [
       M('g1', 'Grammar', 'I finish the fix', 'I finished the fix', 'Yesterday is finished time, so use the past tense. Say the -ed ending clearly.'),
       M('g2', 'Grammar', 'in same time', 'at the same time', 'The fixed phrase is "at the same time", with "at" and "the".'),
@@ -576,7 +590,8 @@ class Component extends DCLogic {
       errs: ERRS.map(([k, label]) => ({ label, on: evalErr === k, cls: evalErr === k ? 'on' : '', pick: () => this.setState({ evalErr: k }) })),
       isRecorded: view === 'recorded',
       noResult: !showResult && view !== 'grading', showResult,
-      prevLabel: hasPrev && view !== 'result', resultOpacity: hasPrev && view !== 'result' ? '.6' : '1',
+      prevLabel: hasPrev && view !== 'result',
+      resultStatus: view === 'result' ? 'Result ready: overall band 6.5.' : (view === 'grading' ? 'Grading your recording.' : ''),
       criteria, wpm, wpmVerdict: wpm < 110 ? 'a bit slow' : (wpm > 160 ? 'a bit fast' : 'in range'), wpmTone: wpm < 110 || wpm > 160 ? 'a' : 'g', fillerCount,
       isTrTab: tab === 'transcript', isMiTab: tab === 'mistakes',
       trTab: tab === 'transcript' ? 'on' : '', miTab: tab === 'mistakes' ? 'on' : '',
@@ -598,6 +613,7 @@ class Component extends DCLogic {
       evalDisabled, evalOpacity: evalDisabled ? '.45' : '1', evalCursor: evalDisabled ? 'not-allowed' : 'pointer',
       evalLabel: view === 'grading' ? 'Evaluating...' : 'Evaluate',
       evaluate: go('grading'),
+      hasEvalErr: view === 'recorded' && !!evalErr,
       evalErrText: view === 'recorded' && evalErr ? ERR_TEXT[evalErr] : '',
       newDisabled, newOpacity: newDisabled ? '.45' : '1',
       confirmNew: !!s.confirmNew,
