@@ -54,12 +54,13 @@ class AudioStore:
     def __init__(self, root: Path):
         self.root = Path(root)
 
-    def save(self, session_id: int, data: bytes, mime_type: str) -> str:
-        directory = self.root / "interviews" / str(session_id)
+    def save(self, folder: str, data: bytes, mime_type: str) -> str:
+        """Write the recording under `folder` (relative to the root) and return its path relative to the root."""
+        directory = self.root / folder
         directory.mkdir(parents=True, exist_ok=True)
         name = f"{uuid4().hex}.{_EXTENSIONS[mime_type]}"
         (directory / name).write_bytes(data)
-        return f"interviews/{session_id}/{name}"
+        return f"{folder}/{name}"
 
     def open_path(self, relative: str) -> Path:
         """The file for a stored path; 404 when it is gone or the path leads outside the store."""
