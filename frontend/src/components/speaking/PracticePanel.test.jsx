@@ -123,6 +123,26 @@ describe('PracticePanel prompt', () => {
     expect(screen.queryByText(/Discard this recording\?/)).not.toBeInTheDocument()
   })
 
+  it('does not bring the confirm back after Record again leaves nothing to discard', async () => {
+    const props = {
+      promptState: readyPrompt(),
+      phase: 'idle',
+      evaluateError: null,
+      hasResult: false,
+      onEvaluate: vi.fn(),
+      onRecordAgain: vi.fn(),
+      onNewPrompt: vi.fn(),
+    }
+    const { user, rerender } = setup({ recorder: recorded(45) })
+    await user.click(button('New prompt'))
+    expect(screen.getByText(/Discard this recording\?/)).toBeInTheDocument()
+
+    rerender(<PracticePanel {...props} recorder={makeRecorder({ status: 'recording', seconds: 1 })} />)
+    expect(screen.queryByText(/Discard this recording\?/)).not.toBeInTheDocument()
+    rerender(<PracticePanel {...props} recorder={makeRecorder()} />)
+    expect(screen.queryByText(/Discard this recording\?/)).not.toBeInTheDocument()
+  })
+
   it('asks before discarding when only a result exists', async () => {
     const { user, onNewPrompt } = setup({ hasResult: true })
     await user.click(button('New prompt'))

@@ -1,25 +1,17 @@
 import { AlertCircle, Mic, RefreshCw, RotateCcw, Sparkles, Square } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Card from '@/components/common/Card'
 import AudioPlayer from '@/components/interview/AudioPlayer'
 import { ghostButton, primaryButton } from '@/components/interview/buttonStyles'
 import Waveform from '@/components/interview/Waveform'
 import { cn } from '@/lib/utils'
+import { formatClock } from '@/utils/time'
 
 export const MIN_SECONDS = 30
 export const MAX_SECONDS = 120
 
-// The board writes lengths as m:ss ("0:30", "2:00"), so this is not formatMmSs's "00:30".
-function clock(totalSeconds) {
-  const s = Math.max(0, Math.floor(totalSeconds))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
-const MIN_CLOCK = clock(MIN_SECONDS)
-const MAX_CLOCK = clock(MAX_SECONDS)
-
-const smallGhost =
-  'inline-flex h-[34px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-700 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent'
+const MIN_CLOCK = formatClock(MIN_SECONDS)
+const MAX_CLOCK = formatClock(MAX_SECONDS)
 
 function ErrorBlock({ className, children }) {
   return (
@@ -77,8 +69,13 @@ function PromptCard({ promptState, recorder, phase, hasResult, onNewPrompt }) {
     onNewPrompt()
   }
 
-  // A recording started or grading began while the question was open: nothing to confirm any more.
-  const showConfirm = confirming && !recording && phase !== 'grading'
+  // Once there is nothing left to discard, or a recording or grading takes over, the question is void
+  // and must not come back later.
+  const blocked = recording || phase === 'grading'
+  useEffect(() => {
+    if (!hasWork || blocked) setConfirming(false)
+  }, [hasWork, blocked])
+  const showConfirm = confirming && hasWork && !blocked
 
   return (
     <Card className="flex flex-col gap-3 px-5 py-[18px]">
@@ -166,7 +163,7 @@ export default function PracticePanel({
             <MicButton status={status} onStart={recorder.start} onStop={recorder.stop} />
             <div role="timer" aria-label="Recording time" className="flex items-baseline gap-2">
               <span className="font-mono text-[28px] font-semibold tracking-[-0.02em] text-slate-50">
-                {clock(seconds)}
+                {formatClock(seconds)}
               </span>{' '}
               <span className="font-mono text-[13px] text-slate-400">/ {MAX_CLOCK}</span>
             </div>
