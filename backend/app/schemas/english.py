@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 MAX_BAND = 9.0
 
@@ -108,3 +108,90 @@ class WritingPromptOut(BaseModel):
     min_words: int
     max_words: int | None
     suggested_minutes: int
+
+
+class MarkKind(str, Enum):
+    FILLER = "filler"
+    PRONUNCIATION = "pronunciation"
+
+
+class SpeechMark(BaseModel):
+    kind: MarkKind
+    text: str
+    occurrence: int  # 1-based: the n-th time this text appears in the transcript
+    respelling: str | None = None
+    note: str | None = None
+
+    @model_validator(mode="after")
+    def _pronunciation_needs_respelling_and_note(self) -> "SpeechMark":
+        if self.kind is MarkKind.PRONUNCIATION and not ((self.respelling or "").strip() and (self.note or "").strip()):
+            raise ValueError("a pronunciation mark needs a respelling and a note")
+        return self
+
+
+class SpeakingCriteria(BaseModel):
+    fluency: CriterionScore
+    pronunciation: CriterionScore
+    vocabulary: CriterionScore
+    grammar: CriterionScore
+
+
+class GrammarCorrection(BaseModel):
+    original: str
+    corrected: str
+    explanation: str
+
+
+class VocabularyUpgrade(BaseModel):
+    used: str
+    better: str
+    explanation: str
+
+
+class SpeakingEvaluation(BaseModel):
+    # The response schema Gemini fills in. No overall band: the server computes it.
+    transcript: str
+    summary: str
+    criteria: SpeakingCriteria
+    marks: list[SpeechMark]
+    grammar_corrections: list[GrammarCorrection]
+    vocabulary_upgrades: list[VocabularyUpgrade]
+
+
+class PlacedMark(BaseModel):
+    kind: MarkKind
+    text: str
+    start: int
+    end: int
+    respelling: str | None = None
+    note: str | None = None
+
+
+class SpeakingEvaluateForm(BaseModel):
+    prompt_text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TOPIC_CHARS)]
+    # The recorder stops at 120 seconds; a few seconds of slack cover timer ticks.
+    duration_seconds: Annotated[int, Field(ge=30, le=125)]
+
+
+class SpeakingSubmissionOut(BaseModel):
+    id: int
+    prompt_text: str
+    transcript: str
+    duration_seconds: int
+    words_per_minute: int
+    overall_band: float
+    band_delta: float | None
+    summary: str
+    criteria: SpeakingCriteria
+    marks: list[PlacedMark]
+    grammar_corrections: list[GrammarCorrection]
+    vocabulary_upgrades: list[VocabularyUpgrade]
+    filler_count: int
+    created_at: datetime
+
+
+class SpeakingPromptOut(BaseModel):
+    id: str
+    prompt: str
+    min_seconds: int
+    max_seconds: int
