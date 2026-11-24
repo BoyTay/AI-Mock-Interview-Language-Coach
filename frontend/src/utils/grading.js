@@ -69,8 +69,9 @@ export function toVocab(upgraded) {
   }))
 }
 
-export function bandDeltaText(delta) {
-  if (delta === null) return 'First essay of this type'
-  if (delta === 0) return 'Same as your previous essay'
-  return `${delta > 0 ? '+' : '-'}${Math.abs(delta).toFixed(1)} vs your previous essay`
+export function bandDeltaText(delta, noun = 'essay') {
+  const recording = noun === 'recording'
+  if (delta === null) return recording ? 'First recording' : 'First essay of this type'
+  if (delta === 0) return recording ? 'Same as your last recording' : 'Same as your previous essay'
+  return `${delta > 0 ? '+' : '-'}${Math.abs(delta).toFixed(1)} vs your ${recording ? 'last recording' : 'previous essay'}`
 }

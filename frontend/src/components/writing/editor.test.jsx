@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { fetchPrompt } from '@/api/writing'
 import WritingCoach from '@/pages/WritingCoach'
 import { countWords } from '@/utils/text'
@@ -26,7 +27,7 @@ const STANDUP = {
 
 const essayBox = () => screen.getByLabelText('Your essay')
 const renderPage = async () => {
-  render(<WritingCoach />)
+  render(<MemoryRouter><WritingCoach /></MemoryRouter>)
   await screen.findByText(IELTS.prompt)
 }
 
@@ -45,7 +46,7 @@ test('loads the prompt from the API with its length note and minimum words', asy
 
 test('shows a loading state before the prompt arrives', () => {
   fetchPrompt.mockReturnValue(new Promise(() => {}))
-  render(<WritingCoach />)
+  render(<MemoryRouter><WritingCoach /></MemoryRouter>)
   expect(screen.getByText('Loading prompt...')).toBeInTheDocument()
   expect(screen.getByRole('timer', { name: 'Time remaining' })).toHaveTextContent('--:--')
 })
@@ -92,7 +93,7 @@ test('New prompt loads a different prompt and restarts the countdown', async () 
 test('a failed first load offers Try again', async () => {
   const user = userEvent.setup()
   fetchPrompt.mockRejectedValueOnce(new Error('down'))
-  render(<WritingCoach />)
+  render(<MemoryRouter><WritingCoach /></MemoryRouter>)
 
   expect(await screen.findByText("Couldn't load a prompt.")).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Try again' }))
