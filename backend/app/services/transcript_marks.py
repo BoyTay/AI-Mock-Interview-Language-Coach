@@ -2,8 +2,9 @@ import math
 import re
 from dataclasses import dataclass
 
-# A word is a run of letters, digits and apostrophes; the underscore that \w allows is not one.
-_WORD = re.compile(r"(?:[^\W_]|['’])+")
+# A word is a run of letters and digits, with single apostrophes allowed inside it ("don't"); the underscore
+# that \w allows is not a letter, and an apostrophe at either edge ('login') is quoting, not part of the word.
+_WORD = re.compile(r"[^\W_]+(?:['’][^\W_]+)*")
 
 
 class MarkPlacementError(ValueError):

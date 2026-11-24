@@ -88,3 +88,18 @@ def test_overall_band_rounds_quarters_up(scores, band):
 
 def test_words_per_minute():
     assert words_per_minute(180, 84) == 129
+
+
+def test_apostrophes_quoting_a_word_are_not_part_of_it():
+    transcript = "I fixed the 'login' bug"
+    span = place(transcript, "login", 1, [])
+    assert transcript[span.start:span.end] == "login"
+
+
+def test_a_lone_apostrophe_is_not_a_word():
+    assert count_words("it ' s") == 2
+
+
+def test_inner_apostrophes_are_kept_in_a_word():
+    assert count_words("don't Don’t") == 2
+    assert place("so don't go", "Don’t", 1, []).start == 3

@@ -21,6 +21,11 @@ class GradedSpeech:
     filler_count: int
 
 
+def _utf16_offset(text: str, index: int) -> int:
+    # The client slices with JavaScript's String.slice, which counts UTF-16 code units, not code points.
+    return len(text[:index].encode("utf-16-le")) // 2
+
+
 def _place_marks(evaluation: SpeakingEvaluation) -> list[PlacedMark]:
     taken: list[PlacedSpan] = []
     placed: list[PlacedMark] = []
@@ -34,8 +39,8 @@ def _place_marks(evaluation: SpeakingEvaluation) -> list[PlacedMark]:
             PlacedMark(
                 kind=mark.kind,
                 text=evaluation.transcript[span.start : span.end],
-                start=span.start,
-                end=span.end,
+                start=_utf16_offset(evaluation.transcript, span.start),
+                end=_utf16_offset(evaluation.transcript, span.end),
                 respelling=mark.respelling,
                 note=mark.note,
             )

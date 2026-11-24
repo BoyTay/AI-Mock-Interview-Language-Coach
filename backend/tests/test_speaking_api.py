@@ -4,6 +4,8 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import select
 
+from app.api import routes_english
+from app.core.config import Settings
 from app.api.routes_english import get_speaking_audio_store, get_speaking_coach
 from app.main import app
 from app.models import SpeakingSubmission, UserProfile
@@ -267,3 +269,15 @@ def test_the_openapi_schema_describes_the_multipart_body(client):
     body = schema["paths"]["/api/v1/english/speaking/evaluate"]["post"]["requestBody"]
     properties = body["content"]["multipart/form-data"]["schema"]["properties"]
     assert set(properties) == {"audio", "prompt_text", "duration_seconds"}
+
+
+def test_missing_gemini_key_gets_503_and_stores_nothing(client, speaking_store, db_session, monkeypatch):
+    app.dependency_overrides.pop(get_speaking_coach, None)
+    monkeypatch.setattr(routes_english, "get_settings", lambda: Settings(database_url="sqlite://", gemini_api_key=""))
+
+    response = evaluate(client)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "AI_NOT_CONFIGURED"
+    assert db_session.query(SpeakingSubmission).count() == 0
+    assert stored_files(speaking_store) == []

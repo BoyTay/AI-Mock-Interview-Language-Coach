@@ -161,6 +161,7 @@ class SpeakingEvaluation(BaseModel):
 class PlacedMark(BaseModel):
     kind: MarkKind
     text: str
+    # UTF-16 code-unit offsets into the transcript, as JavaScript's String.slice uses (not Python code points).
     start: int
     end: int
     respelling: str | None = None

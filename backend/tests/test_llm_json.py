@@ -65,3 +65,27 @@ def test_check_failure_is_retried_with_its_message():
     assert result.ok is True
     assert len(llm.calls) == 2
     assert llm.calls[1][1] == "retry: ok must be true"
+
+
+def test_a_rejected_attempt_is_logged(caplog):
+    llm = AudioLlm("not json", json.dumps({"ok": True}))
+
+    with caplog.at_level("INFO", logger="app.services.llm_json"):
+        call_json(llm, "sys", "prompt", Reply, lambda problem: f"retry: {problem}", audio=Audio(b"x", "audio/webm"))
+
+    messages = [r.getMessage() for r in caplog.records if r.name == "app.services.llm_json"]
+    assert len(messages) == 1 and "attempt 1" in messages[0]
+
+
+def test_a_check_failure_is_logged(caplog):
+    llm = AudioLlm(json.dumps({"ok": False}), json.dumps({"ok": True}))
+
+    def check(reply):
+        if not reply.ok:
+            raise ValueError("ok must be true")
+
+    with caplog.at_level("INFO", logger="app.services.llm_json"):
+        call_json(llm, "sys", "prompt", Reply, lambda problem: problem, check=check)
+
+    messages = [r.getMessage() for r in caplog.records if r.name == "app.services.llm_json"]
+    assert len(messages) == 1 and "attempt 1" in messages[0] and "ok must be true" in messages[0]

@@ -139,3 +139,21 @@ def test_factory_builds_a_coach_that_uses_the_speaking_schema():
     assert isinstance(coach, SpeakingCoach)
     assert coach.llm.model == "gemini-test"
     assert coach.llm.schema is SpeakingEvaluation
+
+
+def test_mark_offsets_are_utf16_code_units():
+    transcript = "Launch 🚀 now, um, then go."
+    coach, _ = coach_with(
+        speaking_payload(
+            transcript=transcript,
+            marks=[{"kind": "filler", "text": "um", "occurrence": 1}],
+            grammar_corrections=[],
+        )
+    )
+
+    mark = coach.evaluate(AUDIO, "p").marks[0]
+
+    assert mark.text == "um"
+    assert transcript.index("um") == 14  # code points; the emoji is one of them
+    assert (mark.start, mark.end) == (15, 17)  # code units; the emoji is two
+    assert transcript.encode("utf-16-le")[2 * mark.start : 2 * mark.end].decode("utf-16-le") == "um"

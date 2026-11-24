@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -7,6 +8,8 @@ from app.core.errors import AppError
 from app.services.english_coach import Audio, Llm, LlmRateLimitError
 
 T = TypeVar("T", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 2
 
@@ -25,7 +28,7 @@ def call_json(
 
     `audio`, when given, goes to the model with every attempt. `check`, when given, runs on each reply that validates; a `ValueError` from it counts as a problem with the reply and its message goes to `retry_prompt`. A rate limit becomes a 429 with Retry-After; replies that stay unusable become a 502.
     """
-    for _ in range(max_retries + 1):
+    for attempt in range(1, max_retries + 2):
         try:
             raw = llm(system, prompt) if audio is None else llm(system, prompt, audio)
         except LlmRateLimitError as exc:
@@ -44,8 +47,10 @@ def call_json(
             problems = "; ".join(
                 f"{'.'.join(str(p) for p in err['loc']) or 'response'}: {err['msg']}" for err in exc.errors()
             )
+            logger.info("Model reply rejected on attempt %d: %s", attempt, problems)
             prompt = retry_prompt(problems)
         except ValueError as exc:
             # After ValidationError, which is itself a ValueError: this one is the check's own.
+            logger.info("Model reply rejected on attempt %d: %s", attempt, exc)
             prompt = retry_prompt(str(exc))
     raise AppError(502, "AI_INVALID_RESPONSE", "The AI service returned an unusable evaluation")

@@ -19,7 +19,7 @@ class SpeakingSubmission(Base):
     duration_seconds: Mapped[int] = mapped_column(Integer)
     words_per_minute: Mapped[int] = mapped_column(Integer)
     overall_band: Mapped[Decimal] = mapped_column(Numeric(3, 1))
-    band_scores: Mapped[dict] = mapped_column(JSONB)  # fluency, lexical, grammar, pronunciation: score + feedback
+    band_scores: Mapped[dict] = mapped_column(JSONB)  # fluency, pronunciation, vocabulary, grammar: score + feedback
     summary: Mapped[str] = mapped_column(Text)
     marks: Mapped[list] = mapped_column(JSONB)  # placed marks, each with start / end
     grammar_corrections: Mapped[list] = mapped_column(JSONB)

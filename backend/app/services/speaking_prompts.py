@@ -1,7 +1,7 @@
 import random
 from dataclasses import dataclass
 
-# Bump when any prompt text below changes, and record the new eval result (docs/evals/writing-scoring.md).
+# Bump when any prompt text below changes. A speaking eval is tracked as a follow-up issue; its results will record the version.
 SPEAKING_PROMPT_VERSION = "1"
 
 MIN_SECONDS = 30
@@ -47,6 +47,7 @@ Marks:
 - kind "pronunciation" is for a correctly formed word that was said wrongly. List at most 8, worst first.
 - text is copied from the transcript: one word or a short phrase, exactly as written there.
 - occurrence is 1-based and counts every time that text appears in the transcript, whether or not the other appearances are marked. The second "um" in the transcript has occurrence 2.
+- Occurrences are counted as whole words, ignoring case and punctuation, so "uh" inside "uh-huh" counts.
 - A pronunciation mark needs a respelling in capitalised-stress style, for example "AR-ki-tek-cher", and a note of one or two sentences saying what went wrong. A filler mark has neither.
 - Marks must not overlap each other.
 
