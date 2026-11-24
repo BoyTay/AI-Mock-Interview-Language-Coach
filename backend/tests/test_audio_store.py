@@ -74,7 +74,7 @@ def test_an_oversized_upload_is_413_and_is_not_read_to_the_end():
 def test_saved_audio_is_filed_under_its_session_and_can_be_read_back(tmp_path):
     store = AudioStore(tmp_path)
 
-    relative = store.save(7, webm_bytes(), "audio/webm")
+    relative = store.save("interviews/7", webm_bytes(), "audio/webm")
 
     assert relative.startswith("interviews/7/") and relative.endswith(".webm")
     assert "\\" not in relative
@@ -82,10 +82,19 @@ def test_saved_audio_is_filed_under_its_session_and_can_be_read_back(tmp_path):
     assert store.media_type(relative) == "audio/webm"
 
 
+def test_save_puts_the_file_under_the_given_folder(tmp_path):
+    store = AudioStore(tmp_path)
+
+    relative = store.save("speaking/1", webm_bytes(), "audio/webm")
+
+    assert relative.startswith("speaking/1/") and relative.endswith(".webm")
+    assert store.open_path(relative).read_bytes() == webm_bytes()
+
+
 def test_each_saved_recording_gets_its_own_file(tmp_path):
     store = AudioStore(tmp_path)
 
-    assert store.save(1, webm_bytes(), "audio/webm") != store.save(1, webm_bytes(), "audio/webm")
+    assert store.save("interviews/1", webm_bytes(), "audio/webm") != store.save("interviews/1", webm_bytes(), "audio/webm")
 
 
 @pytest.mark.parametrize("relative", ["../../etc/passwd", "interviews/1/missing.webm", "/etc/passwd", ""])
@@ -110,7 +119,7 @@ def test_a_file_beside_the_store_cannot_be_reached_through_a_stored_path(tmp_pat
 
 def test_delete_removes_the_file_and_is_quiet_when_it_is_already_gone(tmp_path):
     store = AudioStore(tmp_path)
-    relative = store.save(1, webm_bytes(), "audio/webm")
+    relative = store.save("interviews/1", webm_bytes(), "audio/webm")
 
     store.delete(relative)
     store.delete(relative)

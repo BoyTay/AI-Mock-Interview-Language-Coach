@@ -16,7 +16,7 @@ from app.services.audio_store import AudioStore
 from app.main import app
 from app.api.routes_interview import get_audio_store, get_interviewer, get_rag_service, get_report_writer
 from tests.interview_helpers import FakeInterviewer, FakeRag, FakeReportWriter, bank_question
-from app.models import InterviewSession, MistakeCard, SessionMessage, UserProfile, WritingSubmission
+from app.models import InterviewSession, MistakeCard, SessionMessage, SpeakingSubmission, UserProfile, WritingSubmission
 
 
 @compiles(JSONB, "sqlite")
@@ -33,6 +33,7 @@ def db_session():
     # Only the tables whose columns SQLite can hold: other models use pgvector.
     UserProfile.__table__.create(engine)
     WritingSubmission.__table__.create(engine)
+    SpeakingSubmission.__table__.create(engine)
     MistakeCard.__table__.create(engine)
     InterviewSession.__table__.create(engine)
     SessionMessage.__table__.create(engine)

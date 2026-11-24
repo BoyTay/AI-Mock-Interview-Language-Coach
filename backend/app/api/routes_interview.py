@@ -7,12 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from starlette.datastructures import UploadFile
 
+from app.api.audio_upload import open_form, read_audio_field
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.errors import AppError
 from app.schemas.interview import (
     AnswerOut,
     AnswerRequest,
@@ -22,14 +21,11 @@ from app.schemas.interview import (
 )
 from app.services import interview_service
 from app.services.ai_interviewer import Interviewer, Turn, build_interviewer
-from app.services.audio_store import MAX_AUDIO_BYTES, AudioStore, read_audio, sniff_audio_type
+from app.services.audio_store import AudioStore
 from app.services.rag_service import RagService, build_rag_service
 from app.services.report_writer import ReportWriter, build_report_writer
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
-
-# Room for the multipart boundaries and headers around a recording of the maximum size.
-_MULTIPART_OVERHEAD_BYTES = 64 * 1024
 
 
 class _LazyRag:
@@ -133,7 +129,7 @@ async def answer_question(
 ) -> AnswerOut:
     """Answer the pending question with text (JSON `{"answer": ...}`) or by voice (multipart field `audio`)."""
     if _is_multipart(request):
-        data, mime_type = await _read_audio_upload(request)
+        data, mime_type = await read_audio_field(await open_form(request))
         return await run_in_threadpool(
             _submit_voice, db, interviewer, store, session_id, data, mime_type
         )
@@ -152,22 +148,6 @@ def _submit_voice(
     return interview_service.submit_voice_answer(
         db, get_default_profile(db), interviewer, store, session_id, data, mime_type
     )
-
-
-async def _read_audio_upload(request: Request) -> tuple[bytes, str]:
-    """The recording from the multipart `audio` field and its type, judged by its bytes."""
-    # Refuse a body that announces itself as far too big before the multipart parser spools it to disk.
-    if int(request.headers.get("content-length") or 0) > MAX_AUDIO_BYTES + _MULTIPART_OVERHEAD_BYTES:
-        raise AppError(413, "AUDIO_TOO_LARGE", "The recording is too large. The limit is 10 MB.")
-    form = await request.form()
-    upload = form.get("audio")
-    if not isinstance(upload, UploadFile):
-        raise AppError(422, "AUDIO_REQUIRED", "Attach the recording in the 'audio' form field")
-    data = await run_in_threadpool(read_audio, upload)
-    mime_type = sniff_audio_type(data)
-    if mime_type is None:
-        raise AppError(415, "UNSUPPORTED_AUDIO_TYPE", "Send the recording as webm, mp4, ogg or wav audio")
-    return data, mime_type
 
 
 @router.get("/{session_id}/answers/{message_id}/audio")

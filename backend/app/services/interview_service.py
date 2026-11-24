@@ -217,7 +217,7 @@ def submit_voice_answer(
         raise AppError(422, "NO_SPEECH_DETECTED", "We couldn't hear any speech in the recording. Please record again.")
     step = _decide(turn, evaluation)
 
-    audio_path = store.save(session_id, data, mime_type)
+    audio_path = store.save(f"interviews/{session_id}", data, mime_type)
     try:
         answer_message, next_question = _add_answer(
             db, turn, step, text=transcript, evaluation=evaluation.model_dump(), audio_path=audio_path
