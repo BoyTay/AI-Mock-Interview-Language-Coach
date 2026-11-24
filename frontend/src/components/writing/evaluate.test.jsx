@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { evaluateEssay, fetchPrompt } from '@/api/writing'
 import WritingCoach from '@/pages/WritingCoach'
 
@@ -45,7 +46,7 @@ const evaluateButton = () => screen.getByRole('button', { name: /Evaluate with A
 
 async function renderStandup() {
   const user = userEvent.setup()
-  render(<WritingCoach />)
+  render(<MemoryRouter><WritingCoach /></MemoryRouter>)
   await user.click(screen.getByRole('button', { name: 'Tech Daily Standup' }))
   await screen.findByText(STANDUP.prompt)
   return user

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { describeError, evaluateEssay } from '@/api/writing'
+import EnglishSwitch from '@/components/english/EnglishSwitch'
 import BandSummary from '@/components/writing/BandSummary'
 import EditorPanel from '@/components/writing/EditorPanel'
 import FeedbackTabs from '@/components/writing/FeedbackTabs'
@@ -41,29 +42,32 @@ function WritingSession({ task, onTaskChange }) {
   }
 
   return (
-    <div className="flex w-full max-w-[1440px] flex-wrap items-start gap-5">
+    <div className="flex w-full max-w-[1440px] flex-col gap-5">
       <h1 className="sr-only">English Writing Coach</h1>
-      <EditorPanel
-        task={task}
-        onTaskChange={onTaskChange}
-        essay={draft.value}
-        onEssayChange={draft.setValue}
-        draftSaved={draft.saved}
-        promptState={promptState}
-        onEvaluate={evaluate}
-        evaluating={evaluating}
-        evaluateError={error}
-      />
-      <section aria-label="AI grading" className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
-        {grading ? (
-          <>
-            <BandSummary overall={grading.overall} criteria={grading.criteria} />
-            <FeedbackTabs key={grading.id} segments={grading.segments} unplaced={grading.unplaced} vocab={grading.vocab} />
-          </>
-        ) : (
-          <GradingPlaceholder />
-        )}
-      </section>
+      <EnglishSwitch />
+      <div className="flex flex-wrap items-start gap-5">
+        <EditorPanel
+          task={task}
+          onTaskChange={onTaskChange}
+          essay={draft.value}
+          onEssayChange={draft.setValue}
+          draftSaved={draft.saved}
+          promptState={promptState}
+          onEvaluate={evaluate}
+          evaluating={evaluating}
+          evaluateError={error}
+        />
+        <section aria-label="AI grading" className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
+          {grading ? (
+            <>
+              <BandSummary overall={grading.overall} criteria={grading.criteria} />
+              <FeedbackTabs key={grading.id} segments={grading.segments} unplaced={grading.unplaced} vocab={grading.vocab} />
+            </>
+          ) : (
+            <GradingPlaceholder />
+          )}
+        </section>
+      </div>
     </div>
   )
 }

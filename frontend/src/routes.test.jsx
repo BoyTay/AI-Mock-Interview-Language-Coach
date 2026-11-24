@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { RouterProvider, createMemoryRouter } from 'react-router-dom'
+import { MemoryRouter, RouterProvider, createMemoryRouter, useRoutes } from 'react-router-dom'
 import { routes } from './routes'
 
 vi.mock('@/api/interview', async (importOriginal) => ({
@@ -15,12 +15,29 @@ function renderAt(path) {
 test.each([
   ['/', 'Dashboard'],
   ['/interview', 'Set up your session'],
-  ['/english', 'English Writing Coach'],
+  ['/english/writing', 'English Writing Coach'],
+  ['/english/speaking', 'English Speaking Coach'],
   ['/flashcards', 'Mistake Flashcards'],
   ['/profile', 'CV & JD Profile'],
 ])('%s renders the "%s" heading', (path, heading) => {
   renderAt(path)
   expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
+})
+
+function AppRoutes() {
+  return useRoutes(routes)
+}
+
+// A data router redirect runs through fetch, which fails under jsdom here, so the redirect
+// is checked with a plain MemoryRouter that reads the same route table.
+test('/english redirects to the Writing page', () => {
+  render(
+    <MemoryRouter initialEntries={['/english']}>
+      <AppRoutes />
+    </MemoryRouter>,
+  )
+  expect(screen.getByRole('heading', { level: 1, name: 'English Writing Coach' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('an unknown URL renders the not-found page', () => {
