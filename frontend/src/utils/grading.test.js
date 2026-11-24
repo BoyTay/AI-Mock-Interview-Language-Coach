@@ -130,3 +130,12 @@ describe('bandDeltaText', () => {
     [0, 'Same as your previous essay'],
   ])('%s -> %s', (delta, text) => expect(bandDeltaText(delta)).toBe(text))
 })
+
+describe('bandDeltaText for recordings', () => {
+  test.each([
+    [null, 'First recording'],
+    [0.5, '+0.5 vs your last recording'],
+    [-1, '-1.0 vs your last recording'],
+    [0, 'Same as your last recording'],
+  ])('%s -> %s', (delta, text) => expect(bandDeltaText(delta, 'recording')).toBe(text))
+})
