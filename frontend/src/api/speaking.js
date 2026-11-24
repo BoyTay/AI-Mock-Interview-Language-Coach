@@ -27,6 +27,7 @@ export async function evaluateSpeech({ blob, mimeType, promptText, durationSecon
 export function describeSpeakingError(error) {
   const response = error.response
   if (!response) {
+    if (error.code === 'ECONNABORTED') return 'Grading took too long. Your recording is kept. Try again.'
     return "Can't connect to the server. Check your connection and try again. Your recording is kept."
   }
   const code = response.data?.error?.code

@@ -216,7 +216,7 @@ export default function PracticePanel({
                 <button
                   type="button"
                   onClick={onEvaluate}
-                  disabled={tooShort || grading}
+                  disabled={tooShort || grading || !promptState.prompt}
                   aria-busy={grading}
                   aria-describedby={tooShort ? 'practice-length-hint' : undefined}
                   className={cn(primaryButton, 'h-11 px-5')}

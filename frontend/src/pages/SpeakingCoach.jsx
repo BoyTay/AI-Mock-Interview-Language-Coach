@@ -76,7 +76,7 @@ export default function SpeakingCoach() {
           onNewPrompt={newPrompt}
         />
         <div className="flex min-w-0 flex-[1_1_460px] flex-col">
-          <GradingPanel key={result?.id ?? 'none'} phase={gradingPhase} result={result} isPrevious={resultIsPrevious} />
+          <GradingPanel phase={gradingPhase} result={result} isPrevious={resultIsPrevious} />
         </div>
       </div>
     </div>

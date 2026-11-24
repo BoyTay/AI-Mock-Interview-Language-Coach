@@ -56,6 +56,11 @@ describe('describeSpeakingError', () => {
       "Can't connect to the server. Check your connection and try again. Your recording is kept.",
     ],
     [
+      'timeout',
+      Object.assign(new Error('timeout of 120000ms exceeded'), { code: 'ECONNABORTED', request: {} }),
+      'Grading took too long. Your recording is kept. Try again.',
+    ],
+    [
       'no speech',
       httpError(422, { error: { code: 'NO_SPEECH_DETECTED' } }),
       'We could not hear any speech. Record again closer to the microphone.',

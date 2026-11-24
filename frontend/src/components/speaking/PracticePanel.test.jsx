@@ -191,6 +191,14 @@ describe('PracticePanel recorder states', () => {
     expect(onEvaluate).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps Evaluate disabled when the prompt failed to load', () => {
+    setup({
+      recorder: recorded(45),
+      promptState: { status: 'error', prompt: null, round: 0, next: vi.fn(), retry: vi.fn() },
+    })
+    expect(button('Evaluate')).toBeDisabled()
+  })
+
   it('29 s keeps Evaluate disabled with the hint, 30 s enables it', () => {
     const { rerender } = setup({ recorder: recorded(MIN_SECONDS - 1) })
     expect(button('Evaluate')).toBeDisabled()

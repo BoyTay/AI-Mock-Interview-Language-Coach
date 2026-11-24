@@ -8,6 +8,16 @@ vi.mock('@/api/interview', async (importOriginal) => ({
   fetchProfile: vi.fn().mockResolvedValue({ target_role: 'Dev', has_cv: true }),
 }))
 
+vi.mock('@/api/writing', async (importOriginal) => ({
+  ...(await importOriginal()),
+  // Never settles: these tests check routing, not the prompt, and a late reply would update state outside act().
+  fetchPrompt: vi.fn(() => new Promise(() => {})),
+}))
+vi.mock('@/api/speaking', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchSpeakingPrompt: vi.fn(() => new Promise(() => {})),
+}))
+
 function renderAt(path) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(<RouterProvider router={router} />)

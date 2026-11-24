@@ -214,8 +214,8 @@ function statusText(phase, result) {
   return ''
 }
 
-// phase: 'empty' | 'grading' | 'result'. The page mounts it with key={result.id}, so tab, selection and
-// save states start fresh for each result.
+// phase: 'empty' | 'grading' | 'result'. The live region stays mounted across phases so a screen reader
+// announces the result; Result is keyed by result.id so tab, selection and save states start fresh for each one.
 export default function GradingPanel({ phase, result, isPrevious = false }) {
   const showResult = phase === 'result' && result
 
@@ -225,7 +225,7 @@ export default function GradingPanel({ phase, result, isPrevious = false }) {
         {statusText(phase, result)}
       </div>
       {phase === 'grading' && <Skeleton />}
-      {showResult && <Result result={result} isPrevious={isPrevious} />}
+      {showResult && <Result key={result.id} result={result} isPrevious={isPrevious} />}
       {!showResult && phase !== 'grading' && <Empty />}
     </section>
   )

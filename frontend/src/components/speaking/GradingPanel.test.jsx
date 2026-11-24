@@ -253,3 +253,31 @@ describe('GradingPanel mistakes tab', () => {
     expect(screen.getByRole('button', { name: 'Saved to Flashcards' })).toBeInTheDocument()
   })
 })
+
+describe('GradingPanel across phases', () => {
+  it('keeps the same live region mounted from empty through grading to the result', () => {
+    const { rerender } = render(<GradingPanel phase="empty" />)
+    const status = screen.getByRole('status')
+    rerender(<GradingPanel phase="grading" />)
+    expect(screen.getByRole('status')).toBe(status)
+    rerender(<GradingPanel phase="result" result={RESULT} />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toBeInTheDocument()
+    expect(status).toHaveTextContent('Result ready: overall band 6.5.')
+  })
+
+  it('resets the tab and save states when a result with a new id arrives', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<GradingPanel phase="result" result={RESULT} />)
+    await user.click(screen.getByRole('tab', { name: /Mistakes/ }))
+    const row = screen.getByText('ISH-oo').closest('li')
+    await user.click(within(row).getByRole('button', { name: '+ Save to Flashcards' }))
+    await within(row).findByRole('button', { name: 'Saved to Flashcards' })
+
+    rerender(<GradingPanel phase="result" result={{ ...RESULT, id: 's2' }} />)
+
+    expect(screen.getByRole('tab', { name: 'Transcript' })).toHaveAttribute('aria-selected', 'true')
+    await user.click(screen.getByRole('tab', { name: /Mistakes/ }))
+    expect(screen.queryByRole('button', { name: 'Saved to Flashcards' })).not.toBeInTheDocument()
+  })
+})
