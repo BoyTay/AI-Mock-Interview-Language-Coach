@@ -19,10 +19,11 @@ def call_json(
     retry_prompt: Callable[[str], str],
     max_retries: int = MAX_RETRIES,
     audio: Audio | None = None,
+    check: Callable[[T], None] | None = None,
 ) -> T:
     """Ask the model for JSON that fits `schema`, re-asking with the problem spelled out when it does not.
 
-    `audio`, when given, goes to the model with every attempt. A rate limit becomes a 429 with Retry-After; replies that stay unusable become a 502.
+    `audio`, when given, goes to the model with every attempt. `check`, when given, runs on each reply that validates; a `ValueError` from it counts as a problem with the reply and its message goes to `retry_prompt`. A rate limit becomes a 429 with Retry-After; replies that stay unusable become a 502.
     """
     for _ in range(max_retries + 1):
         try:
@@ -35,10 +36,16 @@ def call_json(
                 headers={"Retry-After": str(exc.retry_after)},
             ) from exc
         try:
-            return schema.model_validate_json(raw)
+            result = schema.model_validate_json(raw)
+            if check is not None:
+                check(result)
+            return result
         except ValidationError as exc:
             problems = "; ".join(
                 f"{'.'.join(str(p) for p in err['loc']) or 'response'}: {err['msg']}" for err in exc.errors()
             )
             prompt = retry_prompt(problems)
+        except ValueError as exc:
+            # After ValidationError, which is itself a ValueError: this one is the check's own.
+            prompt = retry_prompt(str(exc))
     raise AppError(502, "AI_INVALID_RESPONSE", "The AI service returned an unusable evaluation")

@@ -51,3 +51,17 @@ def test_call_json_without_audio_calls_the_model_with_two_arguments():
 
     assert call_json(llm, "SYS", "prompt", Reply, lambda problem: problem).ok is True
     assert llm.calls == 1
+
+
+def test_check_failure_is_retried_with_its_message():
+    llm = AudioLlm(json.dumps({"ok": False}), json.dumps({"ok": True}))
+
+    def check(result):
+        if not result.ok:
+            raise ValueError("ok must be true")
+
+    result = call_json(llm, "SYS", "first", Reply, lambda problem: f"retry: {problem}", check=check)
+
+    assert result.ok is True
+    assert len(llm.calls) == 2
+    assert llm.calls[1][1] == "retry: ok must be true"
