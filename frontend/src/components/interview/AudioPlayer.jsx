@@ -25,7 +25,7 @@ function barPaths(peaks, progress) {
   return { played, rest }
 }
 
-export default function AudioPlayer({ sessionId, messageId, label = 'Recording' }) {
+export default function AudioPlayer({ sessionId, messageId, blob, label = 'Recording' }) {
   const audioRef = useRef(null)
   const dragging = useRef(false)
   const [attempt, setAttempt] = useState(0)
@@ -43,13 +43,15 @@ export default function AudioPlayer({ sessionId, messageId, label = 'Recording' 
     let url = null
     setStatus('loading')
     setWave(null)
-    fetchAnswerAudio(sessionId, messageId, { signal: controller.signal }).then(
-      (blob) => {
+    // A recording still in the browser plays as is; otherwise it comes from the server.
+    const source = blob ? Promise.resolve(blob) : fetchAnswerAudio(sessionId, messageId, { signal: controller.signal })
+    source.then(
+      (audioBlob) => {
         if (!live) return
-        url = URL.createObjectURL(blob)
+        url = URL.createObjectURL(audioBlob)
         setSrc(url)
         setStatus('ready')
-        decodePeaks(blob, WAVE_BARS).then(
+        decodePeaks(audioBlob, WAVE_BARS).then(
           (decoded) => live && setWave(decoded),
           () => {}, // still playable; the bars stay flat and the element gives the duration
         )
@@ -61,7 +63,7 @@ export default function AudioPlayer({ sessionId, messageId, label = 'Recording' 
       controller.abort()
       if (url) URL.revokeObjectURL(url)
     }
-  }, [sessionId, messageId, attempt])
+  }, [sessionId, messageId, blob, attempt])
 
   useEffect(() => {
     const audio = audioRef.current

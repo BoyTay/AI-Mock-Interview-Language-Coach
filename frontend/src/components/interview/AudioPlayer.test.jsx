@@ -207,3 +207,31 @@ test('a recording the browser cannot play says so instead of a dead Play button'
   expect(screen.getByRole('button', { name: 'Play recording' })).toBeDisabled()
   expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
 })
+
+test('plays a local blob without fetching', async () => {
+  const { unmount } = render(<AudioPlayer blob={BLOB} label="Your recording" />)
+
+  expect(await screen.findByRole('button', { name: 'Play recording' })).toBeEnabled()
+  expect(await screen.findByText('00:00 / 01:05')).toBeInTheDocument()
+  expect(screen.getByRole('slider', { name: 'Your recording position' })).toBeInTheDocument()
+  expect(fetchAnswerAudio).not.toHaveBeenCalled()
+  expect(URL.createObjectURL).toHaveBeenCalledWith(BLOB)
+  expect(decodePeaks).toHaveBeenCalledWith(BLOB, 48)
+
+  unmount()
+
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:recording-1')
+})
+
+test('a new blob replaces the old one and frees its URL', async () => {
+  const next = new Blob(['again'], { type: 'audio/webm' })
+  const { rerender } = render(<AudioPlayer blob={BLOB} />)
+  await screen.findByText('00:00 / 01:05')
+
+  rerender(<AudioPlayer blob={next} />)
+  await screen.findByText('00:00 / 01:05')
+
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:recording-1')
+  expect(URL.createObjectURL).toHaveBeenLastCalledWith(next)
+  expect(fetchAnswerAudio).not.toHaveBeenCalled()
+})
