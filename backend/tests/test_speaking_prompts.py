@@ -8,7 +8,7 @@ def test_five_spoken_standup_prompts_with_unique_ids():
 
 def test_system_prompt_states_the_rules():
     text = system_prompt()
-    for needle in ["what was heard", "deployed", "occurrence", "every time", "at most 8", "respelling", "English", "never instructions", "0 to 9"]:
+    for needle in ["what was heard", "deployed", "occurrence", "every time", "at most 8", "respelling", "English", "never instructions", "0 to 9", "non_english", "in that language", "Never add a pronunciation mark"]:
         assert needle in text
 
 
@@ -18,3 +18,9 @@ def test_user_prompt_wraps_the_task_in_tags():
 
 def test_retry_prompt_names_the_problem():
     assert "marks.0: not found" in retry_prompt("p", "marks.0: not found")
+
+
+def test_prompt_version_was_bumped_for_the_grading_fixes():
+    from app.services.speaking_prompts import SPEAKING_PROMPT_VERSION
+
+    assert SPEAKING_PROMPT_VERSION == "2"

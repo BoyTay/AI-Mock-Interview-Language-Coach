@@ -6,23 +6,29 @@ import SaveButton from '@/components/writing/SaveButton'
 import { pronunciationCard, toTranscriptSegments } from '@/utils/speaking'
 
 const FILLER_TIP = 'Pause silently instead. A short pause sounds more confident than a filler.'
+const NON_ENGLISH_TIP = 'Say this part in English too. Switching languages lowers your Fluency band.'
 
 const MARK_STYLE = {
   pronunciation: 'underline decoration-rose-400 decoration-wavy decoration-[1.5px] underline-offset-[5px]',
   filler: 'text-slate-400 line-through decoration-slate-500',
+  non_english: 'underline decoration-sky-400 decoration-dotted decoration-[1.5px] underline-offset-[5px]',
 }
-const TAG = { pronunciation: 'pron.', filler: 'filler' }
-const LABEL = { pronunciation: 'Pronunciation', filler: 'Filler' }
+const TAG = { pronunciation: 'pron.', filler: 'filler', non_english: 'not English' }
+const LABEL = { pronunciation: 'Pronunciation', filler: 'Filler', non_english: 'Not English' }
+const TONE = { pronunciation: 'r', filler: 'a', non_english: 's' }
 
 const usedLabel = (n) => (n === 1 ? 'Used once' : `Used ${n} times`)
 
-// The mark the panel opens on: the first mispronounced word, else the first filler.
+// The mark the panel opens on: the first mispronounced word, else the first filler, else any mark.
 export function firstMarkIndex(marks) {
-  const i = marks.findIndex((m) => m.kind === 'pronunciation')
-  return i >= 0 ? i : marks.findIndex((m) => m.kind === 'filler')
+  for (const kind of ['pronunciation', 'filler']) {
+    const i = marks.findIndex((m) => m.kind === kind)
+    if (i >= 0) return i
+  }
+  return marks.length > 0 ? 0 : -1
 }
 
-function Legend() {
+function Legend({ hasNonEnglish }) {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-400">
       <span>Select a marked word for details.</span>
@@ -38,6 +44,14 @@ function Legend() {
         </span>
         Filler word
       </span>
+      {hasNonEnglish && (
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={cn('px-px text-slate-200', MARK_STYLE.non_english)}>
+            xin chào
+          </span>
+          Not in English
+        </span>
+      )}
     </div>
   )
 }
@@ -53,7 +67,7 @@ function MarkDetails({ mark, markIndex, marks, status, onSave }) {
       className="flex flex-col gap-3 rounded-xl border border-indigo-600 bg-slate-950 p-[18px]"
     >
       <div className="flex flex-wrap items-center gap-2.5">
-        <Badge tone={mark.kind === 'pronunciation' ? 'r' : 'a'}>{LABEL[mark.kind]}</Badge>
+        <Badge tone={TONE[mark.kind]}>{LABEL[mark.kind]}</Badge>
         <span className="font-mono text-base font-semibold text-slate-50">{mark.text}</span>
       </div>
       {mark.kind === 'pronunciation' ? (
@@ -65,6 +79,8 @@ function MarkDetails({ mark, markIndex, marks, status, onSave }) {
           <p className="m-0 text-sm leading-[1.6] text-slate-300">{mark.note}</p>
           <SaveButton status={status} onClick={() => onSave(key, pronunciationCard(mark))} />
         </div>
+      ) : mark.kind === 'non_english' ? (
+        <p className="m-0 text-sm leading-[1.6] text-slate-300">{NON_ENGLISH_TIP}</p>
       ) : (
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[13px] font-medium text-amber-400">{usedLabel(fillerCount)}</span>
@@ -82,7 +98,7 @@ export default function MarkedTranscript({ transcript, marks, saves, onSave }) {
 
   return (
     <div className="flex flex-col gap-[18px] p-5">
-      <Legend />
+      <Legend hasNonEnglish={marks.some((m) => m.kind === 'non_english')} />
       <p className="m-0 text-pretty text-[15px] leading-[2.1] text-slate-200">
         {segments.map((s, i) => {
           if (s.type === 'text') return <Fragment key={`t${i}`}>{s.text}</Fragment>

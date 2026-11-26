@@ -281,3 +281,38 @@ describe('GradingPanel across phases', () => {
     expect(screen.queryByRole('button', { name: 'Saved to Flashcards' })).not.toBeInTheDocument()
   })
 })
+
+describe('GradingPanel speech in another language', () => {
+  const MIXED = 'Yesterday I fixed the bug. Hôm qua em đã sửa lỗi. Today I will write tests.'
+  const stretch = 'Hôm qua em đã sửa lỗi'
+  const start = MIXED.indexOf(stretch)
+  const result = {
+    ...RESULT,
+    id: 's-mixed',
+    transcript: MIXED,
+    marks: [{ kind: 'non_english', text: stretch, start, end: start + stretch.length, respelling: null, note: null }],
+    grammar_corrections: [],
+    vocabulary_upgrades: [],
+    filler_count: 0,
+  }
+
+  it('marks the stretch, explains it and offers no flashcard', () => {
+    render(<GradingPanel phase="result" result={result} />)
+    const mark = screen.getByRole('button', { name: `Not English: ${stretch}` })
+    expect(mark).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Not in English')).toBeInTheDocument()
+    const region = screen.getByRole('region', { name: 'Mark details' })
+    expect(within(region).getByText(/Say this part in English/)).toBeInTheDocument()
+    expect(within(region).queryByRole('button', { name: /Save to Flashcards/ })).not.toBeInTheDocument()
+  })
+
+  it('leaves the stretch out of the mistakes count', () => {
+    render(<GradingPanel phase="result" result={result} />)
+    expect(screen.getByRole('tab', { name: /Mistakes/ })).toHaveTextContent('0')
+  })
+
+  it('shows the not-English legend only when such a mark exists', () => {
+    render(<GradingPanel phase="result" result={RESULT} />)
+    expect(screen.queryByText('Not in English')).not.toBeInTheDocument()
+  })
+})

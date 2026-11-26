@@ -113,6 +113,7 @@ class WritingPromptOut(BaseModel):
 class MarkKind(str, Enum):
     FILLER = "filler"
     PRONUNCIATION = "pronunciation"
+    NON_ENGLISH = "non_english"  # a stretch spoken in another language
 
 
 class SpeechMark(BaseModel):

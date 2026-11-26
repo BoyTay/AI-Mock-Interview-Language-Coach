@@ -35,25 +35,39 @@ def count_words(text: str) -> int:
     return len(tokenize(text))
 
 
-def place(transcript: str, text: str, occurrence: int, taken: list[PlacedSpan]) -> PlacedSpan:
+def find_all(transcript: str, text: str) -> list[PlacedSpan]:
+    """Every place `text` appears in `transcript` as whole words, ignoring case and punctuation."""
     needle = [t.norm for t in tokenize(text)]
     if not needle:
+        return []
+    tokens = tokenize(transcript)
+    norms = [t.norm for t in tokens]
+    size = len(needle)
+    return [
+        PlacedSpan(tokens[i].start, tokens[i + size - 1].end)
+        for i in range(len(tokens) - size + 1)
+        if norms[i : i + size] == needle
+    ]
+
+
+def overlaps(a: PlacedSpan, b: PlacedSpan) -> bool:
+    return a.start < b.end and b.start < a.end
+
+
+def place(transcript: str, text: str, occurrence: int, taken: list[PlacedSpan]) -> PlacedSpan:
+    if not tokenize(text):
         raise MarkPlacementError(f'Mark "{text}" has no words to place.')
     if occurrence < 1:
         raise MarkPlacementError(f'Mark "{text}" has occurrence {occurrence}; it starts at 1.')
 
-    tokens = tokenize(transcript)
-    norms = [t.norm for t in tokens]
-    size = len(needle)
-    starts = [i for i in range(len(tokens) - size + 1) if norms[i : i + size] == needle]
-    if len(starts) < occurrence:
+    found = find_all(transcript, text)
+    if len(found) < occurrence:
         raise MarkPlacementError(
-            f'Mark "{text}" occurrence {occurrence} is not in the transcript ({len(starts)} found).'
+            f'Mark "{text}" occurrence {occurrence} is not in the transcript ({len(found)} found).'
         )
 
-    first = starts[occurrence - 1]
-    span = PlacedSpan(tokens[first].start, tokens[first + size - 1].end)
-    if any(span.start < t.end and t.start < span.end for t in taken):
+    span = found[occurrence - 1]
+    if any(overlaps(span, t) for t in taken):
         raise MarkPlacementError(f'Mark "{text}" would overlap another mark.')
     return span
 
