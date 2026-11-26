@@ -75,6 +75,7 @@ def test_a_rejected_attempt_is_logged(caplog):
 
     messages = [r.getMessage() for r in caplog.records if r.name == "app.services.llm_json"]
     assert len(messages) == 1 and "attempt 1" in messages[0]
+    assert all(r.levelname == "WARNING" for r in caplog.records if r.name == "app.services.llm_json")
 
 
 def test_a_check_failure_is_logged(caplog):

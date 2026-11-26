@@ -47,10 +47,10 @@ def call_json(
             problems = "; ".join(
                 f"{'.'.join(str(p) for p in err['loc']) or 'response'}: {err['msg']}" for err in exc.errors()
             )
-            logger.info("Model reply rejected on attempt %d: %s", attempt, problems)
+            logger.warning("Model reply rejected on attempt %d: %s", attempt, problems)
             prompt = retry_prompt(problems)
         except ValueError as exc:
             # After ValidationError, which is itself a ValueError: this one is the check's own.
-            logger.info("Model reply rejected on attempt %d: %s", attempt, exc)
+            logger.warning("Model reply rejected on attempt %d: %s", attempt, exc)
             prompt = retry_prompt(str(exc))
     raise AppError(502, "AI_INVALID_RESPONSE", "The AI service returned an unusable evaluation")

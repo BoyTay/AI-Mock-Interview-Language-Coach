@@ -12,7 +12,7 @@ from app.models import SpeakingSubmission, UserProfile
 from app.services.audio_store import MAX_AUDIO_BYTES, AudioStore
 from app.services.english_coach import LlmRateLimitError
 from app.services.speaking_coach import SpeakingCoach
-from app.services.speaking_prompts import PROMPTS
+from app.services.speaking_prompts import PROMPTS, SPEAKING_PROMPT_VERSION
 from tests.interview_helpers import mp4_bytes, webm_bytes
 from tests.speaking_helpers import TRANSCRIPT, ScriptedAudioLlm, speaking_payload
 
@@ -99,7 +99,7 @@ def test_the_row_and_the_file_are_stored(client, db_session, speaking_store, llm
     assert [m["kind"] for m in row.marks] == ["filler", "filler", "pronunciation"]
     assert row.grammar_corrections[0]["original"] == "I, um, finish the fix"
     assert row.vocabulary_upgrades[0]["used"] == "fix"
-    assert row.prompt_version == "1"
+    assert row.prompt_version == SPEAKING_PROMPT_VERSION
     assert row.audio_path.startswith(f"speaking/{row.user_id}/") and row.audio_path.endswith(".webm")
     assert speaking_store.open_path(row.audio_path).read_bytes() == webm_bytes(b"recorded words")
 

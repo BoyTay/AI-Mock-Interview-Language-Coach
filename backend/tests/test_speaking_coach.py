@@ -157,3 +157,80 @@ def test_mark_offsets_are_utf16_code_units():
     assert transcript.index("um") == 14  # code points; the emoji is one of them
     assert (mark.start, mark.end) == (15, 17)  # code units; the emoji is two
     assert transcript.encode("utf-16-le")[2 * mark.start : 2 * mark.end].decode("utf-16-le") == "um"
+
+
+DROPPED_ENDING = "Yesterday I change the cache architecture and add a lock."
+
+
+def _pron(text: str, occurrence: int = 1) -> dict:
+    return {"kind": "pronunciation", "text": text, "occurrence": occurrence, "respelling": "X", "note": "A note."}
+
+
+def test_a_pronunciation_mark_on_a_word_a_grammar_correction_changes_is_dropped():
+    coach, _ = coach_with(
+        speaking_payload(
+            transcript=DROPPED_ENDING,
+            marks=[_pron("change"), _pron("architecture"), _pron("add")],
+            grammar_corrections=[
+                {"original": "I change the cache architecture", "corrected": "I changed the cache architecture", "explanation": "Past."},
+                {"original": "add a lock", "corrected": "added a lock", "explanation": "Past."},
+            ],
+        )
+    )
+
+    graded = coach.evaluate(AUDIO, "p")
+
+    # "architecture" sits inside a correction but the correction keeps it, so it is a real pronunciation slip.
+    assert [m.text for m in graded.marks] == ["architecture"]
+
+
+def test_a_dropped_pronunciation_mark_does_not_cost_a_retry():
+    coach, llm = coach_with(
+        speaking_payload(
+            transcript=DROPPED_ENDING,
+            marks=[_pron("change")],
+            grammar_corrections=[{"original": "I change", "corrected": "I changed", "explanation": "Past."}],
+        )
+    )
+
+    coach.evaluate(AUDIO, "p")
+
+    assert len(llm.calls) == 1
+
+
+def test_corrections_and_upgrades_that_change_nothing_are_dropped():
+    coach, _ = coach_with(
+        speaking_payload(
+            grammar_corrections=[
+                {"original": "finish the fix", "corrected": "finish  the fix", "explanation": "No change."},
+                {"original": "I, um, finish the fix", "corrected": "I finished the fix", "explanation": "Past."},
+            ],
+            vocabulary_upgrades=[
+                {"used": "fix", "better": "Fix", "explanation": "Same word."},
+                {"used": "write tests", "better": "add test coverage", "explanation": "More precise."},
+            ],
+        )
+    )
+
+    graded = coach.evaluate(AUDIO, "p")
+
+    assert [c.corrected for c in graded.evaluation.grammar_corrections] == ["I finished the fix"]
+    assert [u.better for u in graded.evaluation.vocabulary_upgrades] == ["add test coverage"]
+
+
+def test_speech_in_another_language_is_marked_and_not_counted_as_fillers():
+    transcript = "Yesterday I fixed the login bug. Hôm qua em đã sửa lỗi. Today I will write tests."
+    coach, _ = coach_with(
+        speaking_payload(
+            transcript=transcript,
+            marks=[{"kind": "non_english", "text": "Hôm qua em đã sửa lỗi", "occurrence": 1}],
+            grammar_corrections=[],
+        )
+    )
+
+    graded = coach.evaluate(AUDIO, "p")
+
+    (mark,) = graded.marks
+    assert mark.kind == "non_english"
+    assert transcript[mark.start : mark.end] == "Hôm qua em đã sửa lỗi"
+    assert graded.filler_count == 0
