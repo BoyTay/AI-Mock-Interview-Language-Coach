@@ -160,6 +160,28 @@ test('unmounting pauses and frees the recording', async () => {
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:recording-1')
 })
 
+function expiredError(body) {
+  return { response: { status: 410, data: new Blob([body]) } }
+}
+
+test('shows the expiry message without Try again', async () => {
+  const message = 'This recording was deleted after 90 days.'
+  fetchAnswerAudio.mockRejectedValueOnce(expiredError(JSON.stringify({ error: { code: 'AUDIO_EXPIRED', message } })))
+  render(<AudioPlayer sessionId={7} messageId={42} />)
+
+  expect(await screen.findByText(message)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Play recording' })).toBeDisabled()
+})
+
+test('falls back to a generic expiry message when the body is not readable', async () => {
+  fetchAnswerAudio.mockRejectedValueOnce(expiredError('not json'))
+  render(<AudioPlayer sessionId={7} messageId={42} />)
+
+  expect(await screen.findByText('This recording has been deleted.')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+})
+
 test('a failed download says the recording is unavailable and can be retried', async () => {
   const user = userEvent.setup()
   fetchAnswerAudio.mockRejectedValueOnce(new Error('404'))
