@@ -15,7 +15,7 @@ class SpeakingSubmission(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user_profiles.id", ondelete="CASCADE"), index=True)
     prompt_text: Mapped[str] = mapped_column(Text)
     transcript: Mapped[str] = mapped_column(Text)
-    audio_path: Mapped[str] = mapped_column(String(255))  # relative to the upload directory
+    audio_path: Mapped[str | None] = mapped_column(String(255))  # relative to the upload directory; None once expired
     duration_seconds: Mapped[int] = mapped_column(Integer)
     words_per_minute: Mapped[int] = mapped_column(Integer)
     overall_band: Mapped[Decimal] = mapped_column(Numeric(3, 1))

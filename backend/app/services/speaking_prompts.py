@@ -7,6 +7,10 @@ SPEAKING_PROMPT_VERSION = "2"
 MIN_SECONDS = 30
 MAX_SECONDS = 120
 
+# What the server accepts after measuring the file: the limits above plus slack for the recorder's timer ticks.
+MIN_MEASURED_SECONDS = 29
+MAX_MEASURED_SECONDS = 125
+
 
 @dataclass(frozen=True)
 class SpeakingPrompt:

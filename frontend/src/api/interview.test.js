@@ -96,6 +96,25 @@ test('a rate limit without Retry-After still gives a friendly message', () => {
   expect(describeInterviewError(httpError(429))).toMatch(/busy.*try again in a moment/i)
 })
 
+test('recording errors show the server message, and an unavailable probe has its own', () => {
+  const tooLong = 'This recording is longer than the limit of 3:00. Please record a shorter answer.'
+  const unreadable = 'We could not read this recording. Please record again.'
+  expect(describeInterviewError(httpError(422, apiError('AUDIO_TOO_LONG', tooLong)))).toBe(tooLong)
+  expect(describeInterviewError(httpError(422, apiError('AUDIO_UNREADABLE', unreadable)))).toBe(unreadable)
+  expect(describeInterviewError(httpError(503, apiError('AUDIO_PROBE_UNAVAILABLE')))).toBe(
+    'The server cannot check recordings right now. Please try again later.',
+  )
+})
+
+test('recording errors without a server message fall back to a fixed message', () => {
+  expect(describeInterviewError(httpError(422, { error: { code: 'AUDIO_TOO_LONG' } }))).toBe(
+    'This recording is too long. Please record a shorter answer.',
+  )
+  expect(describeInterviewError(httpError(422, { error: { code: 'AUDIO_UNREADABLE' } }))).toBe(
+    'We could not read this recording. Please record again.',
+  )
+})
+
 test('an unavailable AI service and an unreadable reply have their own messages', () => {
   expect(describeInterviewError(httpError(503, apiError('AI_UNAVAILABLE')))).toMatch(/temporarily unavailable/i)
   expect(describeInterviewError(httpError(502, apiError('AI_INVALID_RESPONSE')))).toMatch(/could not read/i)

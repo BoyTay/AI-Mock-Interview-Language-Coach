@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.datastructures import FormData
 
-from app.api.audio_upload import open_form, read_audio_field
+from app.api.audio_upload import AudioProbe, get_audio_probe, measure, open_form, read_audio_field
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -189,7 +189,8 @@ def to_speaking_out(db: Session, submission: SpeakingSubmission) -> SpeakingSubm
 def _read_speaking_form(form: FormData) -> SpeakingEvaluateForm:
     """Validate the text fields, failing with the same 422 body FastAPI gives for a declared body."""
     # A field that is missing, or is a file instead of text, counts as missing.
-    raw = {name: form.get(name) for name in ("prompt_text", "duration_seconds")}
+    # `duration_seconds` is deliberately not read: the server measures the recording itself.
+    raw = {name: form.get(name) for name in ("prompt_text",)}
     fields = {name: value for name, value in raw.items() if isinstance(value, str)}
     try:
         return SpeakingEvaluateForm.model_validate(fields)
@@ -209,12 +210,10 @@ _SPEAKING_BODY = {
                         "prompt_text": {"type": "string"},
                         "duration_seconds": {
                             "type": "integer",
-                            "minimum": 30,
-                            "maximum": 125,
-                            "description": "How long the recording is, in seconds.",
+                            "description": "Ignored: the server measures the recording's length itself.",
                         },
                     },
-                    "required": ["audio", "prompt_text", "duration_seconds"],
+                    "required": ["audio", "prompt_text"],
                 }
             }
         },
@@ -230,17 +229,27 @@ async def evaluate_speaking(
     db: Session = Depends(get_db),
     coach: SpeakingCoach = Depends(get_speaking_coach),
     store: AudioStore = Depends(get_speaking_audio_store),
+    probe: AudioProbe = Depends(get_audio_probe),
 ) -> SpeakingSubmissionOut:
-    """Grade a recorded spoken standup (multipart fields `audio`, `prompt_text`, `duration_seconds`)."""
+    """Grade a recorded spoken standup (multipart fields `audio`, `prompt_text`; `duration_seconds` is ignored)."""
     form = await open_form(request)
     fields = _read_speaking_form(form)
     data, mime_type = await read_audio_field(form)
+    seconds = await run_in_threadpool(
+        measure,
+        probe,
+        data,
+        min_seconds=speaking_prompts.MIN_MEASURED_SECONDS,
+        max_seconds=speaking_prompts.MAX_MEASURED_SECONDS,
+        max_label="2:00",
+    )
     # The model call can take many seconds: run the blocking work off the event loop.
-    return await run_in_threadpool(_submit_speaking, db, coach, store, fields, data, mime_type)
+    return await run_in_threadpool(_submit_speaking, db, coach, store, fields, data, mime_type, round(seconds))
 
 
 def _submit_speaking(
-    db: Session, coach: SpeakingCoach, store: AudioStore, fields: SpeakingEvaluateForm, data: bytes, mime_type: str
+    db: Session, coach: SpeakingCoach, store: AudioStore, fields: SpeakingEvaluateForm, data: bytes, mime_type: str,
+    duration_seconds: int,
 ) -> SpeakingSubmissionOut:
     profile = get_default_profile(db)
     # Grade first and write afterwards: a failed call leaves no row and no file.
@@ -254,8 +263,8 @@ def _submit_speaking(
             prompt_text=fields.prompt_text,
             transcript=evaluation.transcript,
             audio_path=audio_path,
-            duration_seconds=fields.duration_seconds,
-            words_per_minute=words_per_minute(graded.word_count, fields.duration_seconds),
+            duration_seconds=duration_seconds,
+            words_per_minute=words_per_minute(graded.word_count, duration_seconds),
             overall_band=graded.overall_band,
             band_scores=evaluation.criteria.model_dump(),
             summary=evaluation.summary,

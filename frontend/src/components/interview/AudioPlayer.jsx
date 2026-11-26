@@ -7,6 +7,28 @@ import { decodePeaks, nextSpeed, WAVE_BARS } from '@/utils/waveform'
 
 const SEEK_STEP = 5 // seconds per arrow key
 const FLAT = Array(WAVE_BARS).fill(0)
+const EXPIRED_FALLBACK = 'This recording has been deleted.'
+
+// Blob.text() is missing in some older browsers and in jsdom; FileReader reads it everywhere.
+function readText(blob) {
+  if (typeof blob.text === 'function') return blob.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })
+}
+
+// The audio request asks for a blob, so even a JSON error body arrives as one.
+async function expiryMessage(error) {
+  try {
+    const body = JSON.parse(await readText(error.response.data))
+    return body?.error?.message || EXPIRED_FALLBACK
+  } catch {
+    return EXPIRED_FALLBACK
+  }
+}
 
 // Only one recording plays at a time: starting one pauses the one before.
 let activeAudio = null
@@ -29,8 +51,9 @@ export default function AudioPlayer({ sessionId, messageId, blob, label = 'Recor
   const audioRef = useRef(null)
   const dragging = useRef(false)
   const [attempt, setAttempt] = useState(0)
-  const [status, setStatus] = useState('loading') // loading | ready | error (download) | unplayable (browser)
+  const [status, setStatus] = useState('loading') // loading | ready | error (download) | expired (deleted) | unplayable (browser)
   const [src, setSrc] = useState(null)
+  const [expiredMessage, setExpiredMessage] = useState(EXPIRED_FALLBACK)
   const [wave, setWave] = useState(null) // { duration, peaks } once decoded
   const [elementDuration, setElementDuration] = useState(NaN)
   const [current, setCurrent] = useState(0)
@@ -56,7 +79,17 @@ export default function AudioPlayer({ sessionId, messageId, blob, label = 'Recor
           () => {}, // still playable; the bars stay flat and the element gives the duration
         )
       },
-      () => live && setStatus('error'),
+      (error) => {
+        if (error?.response?.status !== 410) {
+          if (live) setStatus('error')
+          return
+        }
+        expiryMessage(error).then((message) => {
+          if (!live) return
+          setExpiredMessage(message)
+          setStatus('expired')
+        })
+      },
     )
     return () => {
       live = false
@@ -173,6 +206,8 @@ export default function AudioPlayer({ sessionId, messageId, blob, label = 'Recor
 
       {status === 'unplayable' ? (
         <p className="m-0 min-w-0 flex-1 text-[13px] text-slate-400">This recording can't be played in this browser.</p>
+      ) : status === 'expired' ? (
+        <p className="m-0 min-w-0 flex-1 text-[13px] text-slate-400">{expiredMessage}</p>
       ) : status === 'error' ? (
         <p className="m-0 min-w-0 flex-1 text-[13px] text-slate-400">
           Recording unavailable.{' '}

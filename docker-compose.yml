@@ -36,6 +36,22 @@ services:
       - ./scripts:/scripts:ro
       - audio_uploads:/app/uploads
 
+  cleanup:
+    build: ./backend
+    container_name: devcoach_cleanup
+    restart: unless-stopped
+    command: python -m app.jobs.cleanup_audio --every 24h
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-devcoach}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-devcoach_db}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - audio_uploads:/app/uploads
+
   frontend:
     build: ./frontend
     container_name: devcoach_frontend

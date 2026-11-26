@@ -25,10 +25,5 @@ def test_speaking_criteria_reject_off_step_bands():
         SpeakingCriteria(**{k: {"score": 6.3, "feedback": "x"} for k in ("fluency", "pronunciation", "vocabulary", "grammar")})
 
 
-@pytest.mark.parametrize("seconds,ok", [(29, False), (30, True), (120, True), (121, True), (125, True), (126, False)])
-def test_duration_range(seconds, ok):
-    if ok:
-        SpeakingEvaluateForm(prompt_text="Give your update", duration_seconds=seconds)
-    else:
-        with pytest.raises(ValidationError):
-            SpeakingEvaluateForm(prompt_text="Give your update", duration_seconds=seconds)
+def test_duration_is_optional():
+    assert SpeakingEvaluateForm(prompt_text="Give your update").duration_seconds is None

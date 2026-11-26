@@ -38,5 +38,6 @@ class SessionMessage(Base):
     question_type: Mapped[str | None] = mapped_column(String(30))  # MAIN_QUESTION, FOLLOW_UP
     content_text: Mapped[str] = mapped_column(Text)
     audio_path: Mapped[str | None] = mapped_column(String(255))
+    audio_deleted_at: Mapped[datetime | None]  # set when the cleanup job removes an expired recording
     evaluation: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime | None] = mapped_column(server_default=func.current_timestamp())

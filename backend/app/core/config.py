@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     # Where spoken answers are stored. Compose mounts the audio_uploads volume here.
     upload_dir: str = "/app/uploads"
+    # Days to keep recordings before the cleanup job deletes them; 0 keeps them forever.
+    audio_retention_days: int = Field(default=90, ge=0)
 
     @property
     def sqlalchemy_url(self) -> str:

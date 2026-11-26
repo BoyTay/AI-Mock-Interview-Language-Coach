@@ -11,6 +11,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.audio_upload import get_audio_probe
 from app.core.database import get_db
 from app.services.audio_store import AudioStore
 from app.main import app
@@ -51,11 +52,34 @@ def db_session():
     engine.dispose()
 
 
+class FakeProbe:
+    """Stands in for ffprobe: returns `seconds`, or raises `error` when a test sets one."""
+
+    def __init__(self, seconds: float = 84.0):
+        self.seconds = seconds
+        self.error: Exception | None = None
+
+    def __call__(self, data: bytes) -> float:
+        if self.error is not None:
+            raise self.error
+        return self.seconds
+
+
 @pytest.fixture
 def client(db_session):
     app.dependency_overrides[get_db] = lambda: db_session
-    yield TestClient(app)
+    fake_probe = FakeProbe()
+    app.dependency_overrides[get_audio_probe] = lambda: fake_probe
+    test_client = TestClient(app)
+    test_client.fake_probe = fake_probe
+    yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def probe(client):
+    """The fake length probe the client uses: set `.seconds` or `.error` in a test."""
+    return client.fake_probe
 
 
 @pytest.fixture
