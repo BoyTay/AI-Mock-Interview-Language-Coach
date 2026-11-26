@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 AUDIO_FOLDERS = ("interviews", "speaking")
 # The sweep refuses to run when it would delete more than half of the files on disk and more than this many.
 GUARD_MIN_FILES = 10
+COMMIT_BATCH = 100
 
 
 @dataclass
@@ -85,30 +86,40 @@ def cleanup(
     report = CleanupReport()
     verb = "would delete" if dry_run else "deleted"
 
-    # 1. Expire recordings past the retention period.
-    expiring: set[int] = set()
+    # 1. Expire recordings past the retention period. A file that cannot be deleted is logged and skipped,
+    # so one bad file never stops the run or blocks the other rows.
+    expiring: set[tuple[type, int]] = set()
     if retention_days > 0:
         cutoff = now - timedelta(days=retention_days)
+        pending = 0
         for row in _recording_rows(db):
             if row.created_at is None or row.created_at >= cutoff:
                 continue
             relative = _normalise(row.audio_path)
+            size = 0  # stays 0 when the file is already gone; the row still expires
             try:
                 size = store.open_path(relative).stat().st_size
-            except AppError:
-                size = 0  # the file is already gone; the row still expires
+            except (AppError, OSError):
+                pass
+            if not dry_run:
+                try:
+                    store.delete(relative)
+                except OSError:
+                    logger.exception("could not delete expired recording %s; leaving its row alone", relative)
+                    continue
+                _remove_empty_folder(root, relative)
+                row.audio_path = None
+                if isinstance(row, SessionMessage):
+                    row.audio_deleted_at = now
+                pending += 1
+                if pending >= COMMIT_BATCH:
+                    db.commit()
+                    pending = 0
             report.expired += 1
             report.freed_bytes += size
-            expiring.add(id(row))
+            expiring.add((type(row), row.id))
             logger.info("%s expired recording %s (%d bytes)", verb, relative, size)
-            if dry_run:
-                continue
-            store.delete(relative)
-            _remove_empty_folder(root, relative)
-            row.audio_path = None
-            if isinstance(row, SessionMessage):
-                row.audio_deleted_at = now
-        if not dry_run:
+        if pending:
             db.commit()
 
     # 2. Sweep files that no row refers to.
@@ -116,31 +127,39 @@ def cleanup(
     referenced = {_normalise(row.audio_path) for row in rows}
     on_disk = _files_on_disk(root)
     grace_cutoff = now - orphan_grace
-    orphan_files = {
-        relative: path
-        for relative, path in on_disk.items()
-        if relative not in referenced
-        and datetime.fromtimestamp(path.stat().st_mtime, UTC).replace(tzinfo=None) < grace_cutoff
-    }
-    report.orphans = len(orphan_files)
-    if report.orphans > len(on_disk) / 2 and report.orphans > GUARD_MIN_FILES and not force:
+    orphan_files: dict[str, tuple[Path, int]] = {}
+    for relative, path in on_disk.items():
+        if relative in referenced:
+            continue
+        try:
+            info = path.stat()
+        except OSError:
+            continue  # vanished since the listing
+        if datetime.fromtimestamp(info.st_mtime, UTC).replace(tzinfo=None) < grace_cutoff:
+            orphan_files[relative] = (path, info.st_size)
+    if len(orphan_files) > len(on_disk) / 2 and len(orphan_files) > GUARD_MIN_FILES and not force:
         report.guarded = True
-        logger.warning(
+        report.orphans = len(orphan_files)
+        logger.error(
             "orphan sweep refused: %d of %d files look orphaned (use --force to delete them)",
-            report.orphans, len(on_disk),
+            len(orphan_files), len(on_disk),
         )
     else:
-        for relative, path in orphan_files.items():
-            size = path.stat().st_size
+        for relative, (path, size) in orphan_files.items():
+            if not dry_run:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    logger.exception("could not delete orphan %s", relative)
+                    continue
+                _remove_empty_folder(root, relative)
+            report.orphans += 1
             report.freed_bytes += size
             logger.info("%s orphan %s (%d bytes)", verb, relative, size)
-            if not dry_run:
-                path.unlink(missing_ok=True)
-                _remove_empty_folder(root, relative)
 
     # 3. Rows whose file is gone: count and log, change nothing.
     for row in rows:
-        if id(row) in expiring:
+        if (type(row), row.id) in expiring:
             continue
         relative = _normalise(row.audio_path)
         if relative not in on_disk:

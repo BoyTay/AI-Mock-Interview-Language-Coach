@@ -1,9 +1,13 @@
+import gc
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from app.jobs import cleanup_audio
 from app.jobs.cleanup_audio import CleanupReport, cleanup, parse_interval
 from app.models import InterviewSession, SessionMessage, SpeakingSubmission
+from app.services.audio_store import AudioStore
 
 NOW = datetime(2026, 11, 26, 12, 0, 0)
 OLD = NOW - timedelta(days=100)
@@ -177,3 +181,72 @@ def test_dry_run_changes_nothing(db_session, tmp_path):
 def test_every_parses_hours_and_minutes():
     assert parse_interval("24h") == timedelta(hours=24)
     assert parse_interval("90m") == timedelta(minutes=90)
+
+
+def test_expired_rows_are_not_counted_missing_after_their_objects_are_collected(db_session, tmp_path):
+    for i in range(5):
+        add_message(db_session, f"interviews/{i}/gone.webm", OLD)
+    add_submission(db_session, "speaking/1/gone.wav", OLD)
+    db_session.expunge_all()
+    gc.collect()
+
+    report = run(db_session, tmp_path, dry_run=True)
+
+    assert report.expired == 6
+    assert report.missing == 0
+
+
+def test_a_file_that_cannot_be_deleted_does_not_stop_the_run(db_session, tmp_path, monkeypatch):
+    bad = write_file(tmp_path, "interviews/1/bad.webm")
+    write_file(tmp_path, "interviews/2/ok.webm")
+    write_file(tmp_path, "interviews/3/ok.webm")
+    orphan = write_file(tmp_path, "speaking/9/orphan.wav")
+    messages = [
+        add_message(db_session, "interviews/1/bad.webm", OLD),
+        add_message(db_session, "interviews/2/ok.webm", OLD),
+        add_message(db_session, "interviews/3/ok.webm", OLD),
+    ]
+    real_delete = AudioStore.delete
+
+    def flaky_delete(self, relative):
+        if relative == "interviews/1/bad.webm":
+            raise PermissionError("locked")
+        real_delete(self, relative)
+
+    monkeypatch.setattr(AudioStore, "delete", flaky_delete)
+
+    report = run(db_session, tmp_path)
+
+    assert report.expired == 2
+    assert report.orphans == 1
+    assert bad.exists() and not orphan.exists()
+    for message in messages:
+        db_session.refresh(message)
+    assert messages[0].audio_path == "interviews/1/bad.webm"
+    assert messages[1].audio_path is None and messages[2].audio_path is None
+
+
+def test_a_file_that_vanishes_after_listing_does_not_abort(db_session, tmp_path, monkeypatch):
+    orphan = write_file(tmp_path, "interviews/1/orphan.webm")
+    ghost = tmp_path / "interviews/1/ghost.webm"
+    real_listing = cleanup_audio._files_on_disk
+    monkeypatch.setattr(
+        cleanup_audio, "_files_on_disk", lambda root: {**real_listing(root), "interviews/1/ghost.webm": ghost}
+    )
+
+    report = run(db_session, tmp_path)
+
+    assert report.orphans == 1
+    assert not orphan.exists()
+
+
+def test_the_guard_logs_an_error_with_the_counts(db_session, tmp_path, caplog):
+    for i in range(12):
+        write_file(tmp_path, f"interviews/9/{i}.webm")
+
+    with caplog.at_level(logging.INFO):
+        run(db_session, tmp_path)
+
+    errors = [record for record in caplog.records if record.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert "12 of 12" in errors[0].getMessage()
