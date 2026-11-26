@@ -59,7 +59,11 @@ export function describeInterviewError(error) {
       : 'The AI is busy right now. Please try again in a moment.'
   }
   if (response.status === 422 && (code === 'AUDIO_TOO_LONG' || code === 'AUDIO_UNREADABLE')) {
-    return response.data.error.message
+    const fallback =
+      code === 'AUDIO_TOO_LONG'
+        ? 'This recording is too long. Please record a shorter answer.'
+        : 'We could not read this recording. Please record again.'
+    return response.data.error.message || fallback
   }
   if (response.status === 503 && code === 'AUDIO_PROBE_UNAVAILABLE') {
     return 'The server cannot check recordings right now. Please try again later.'

@@ -251,7 +251,11 @@ def get_answer_audio(
     if message is None or message.session_id != session.id or message.sender != "USER":
         raise AppError(404, "AUDIO_NOT_FOUND", "Recording not found")
     if message.audio_deleted_at is not None:
-        raise AppError(410, "AUDIO_EXPIRED", f"This recording was deleted after {retention_days} days.")
+        if retention_days > 0:
+            message_text = f"This recording was deleted after {retention_days} days."
+        else:
+            message_text = "This recording has been deleted."
+        raise AppError(410, "AUDIO_EXPIRED", message_text)
     if not message.audio_path:
         raise AppError(404, "AUDIO_NOT_FOUND", "Recording not found")
     return store.open_path(message.audio_path), store.media_type(message.audio_path)

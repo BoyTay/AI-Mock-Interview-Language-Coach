@@ -5,6 +5,8 @@ import tempfile
 from collections.abc import Callable
 
 _TIMEOUT_SECONDS = 10
+# A recording this short or shorter is treated as empty.
+_MIN_SECONDS = 0.5
 
 
 class AudioUnreadable(Exception):
@@ -27,11 +29,6 @@ def _number(text: str) -> float | None:
         return None
 
 
-def _format_duration(output: str) -> float | None:
-    value = _number(output.strip())
-    return value if value is not None and value > 0 else None
-
-
 def _last_packet_end(output: str) -> float | None:
     """The largest pts_time + duration_time over the packet lines; a missing duration counts as 0."""
     end = None
@@ -46,10 +43,12 @@ def _last_packet_end(output: str) -> float | None:
 
 
 def probe_duration(data: bytes, run: Callable[[list[str]], str] | None = None) -> float:
-    """The recording's length in seconds.
+    """The recording's length in seconds, taken from its audio packets.
 
     The bytes go to a temporary file because ffprobe cannot read an mp4 whose index sits at the end from a pipe.
-    A webm from the browser has no duration in its header, so the last audio packet's end is used then.
+    The length is the end of the last audio packet, never a duration in the header: a header can be missing (a webm
+    from the browser) or edited, and a file with no audio stream (a video-only webm) has no packets at all.
+    A recording with no audio packets, or one of 0.5 seconds or less, is unreadable.
     """
     run = run or _run_ffprobe
     fd, path = tempfile.mkstemp(prefix="audio-probe-")
@@ -57,16 +56,12 @@ def probe_duration(data: bytes, run: Callable[[list[str]], str] | None = None) -
         with os.fdopen(fd, "wb") as file:
             file.write(data)
         try:
-            seconds = _format_duration(
-                run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path])
+            seconds = _last_packet_end(
+                run([
+                    "ffprobe", "-v", "error", "-select_streams", "a:0",
+                    "-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", path,
+                ])
             )
-            if seconds is None:
-                seconds = _last_packet_end(
-                    run([
-                        "ffprobe", "-v", "error", "-select_streams", "a:0",
-                        "-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", path,
-                    ])
-                )
         except FileNotFoundError as error:
             raise AudioProbeUnavailable("ffprobe is not installed") from error
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
@@ -75,4 +70,6 @@ def probe_duration(data: bytes, run: Callable[[list[str]], str] | None = None) -
         os.unlink(path)
     if seconds is None:
         raise AudioUnreadable("the recording has no audio")
+    if seconds <= _MIN_SECONDS:
+        raise AudioUnreadable("the recording is empty")
     return seconds

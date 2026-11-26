@@ -81,6 +81,16 @@ describe('describeSpeakingError', () => {
       'This recording is longer than the limit of 2:00. Please record a shorter answer. Your recording is kept.',
     ],
     [
+      'recording too short without a server message',
+      httpError(422, { error: { code: 'AUDIO_TOO_SHORT' } }),
+      'This recording is too short. Please record a longer answer. Your recording is kept.',
+    ],
+    [
+      'recording too long without a server message',
+      httpError(422, { error: { code: 'AUDIO_TOO_LONG' } }),
+      'This recording is too long. Please record a shorter answer. Your recording is kept.',
+    ],
+    [
       'probe unavailable',
       httpError(503, { error: { code: 'AUDIO_PROBE_UNAVAILABLE', message: 'x' } }),
       'The server cannot check recordings right now. Please try again later. Your recording is kept.',

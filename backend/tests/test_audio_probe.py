@@ -25,34 +25,46 @@ class FakeRun:
         return output
 
 
-def test_format_duration_is_used():
-    run = FakeRun("84.120000\n")
+def test_length_comes_from_the_last_audio_packet():
+    run = FakeRun("0.000,0.020\n0.020,0.020\n83.980,0.020\n")
 
-    assert probe_duration(b"audio-bytes", run) == pytest.approx(84.12)
+    assert probe_duration(b"audio-bytes", run) == pytest.approx(84.0)
     assert len(run.calls) == 1
     assert run.calls[0][0] == "ffprobe"
+    assert "a:0" in run.calls[0]
     assert run.seen_bytes[0] == b"audio-bytes"
 
 
-def test_webm_without_duration_falls_back_to_the_last_packet():
-    run = FakeRun("N/A\n", "0.000,0.020\n0.020,0.020\n83.980,0.020\n")
+def test_length_comes_from_packets_not_the_header():
+    # Only the packet scan runs, so an edited Matroska Duration (60 s) cannot shorten a 900 s recording.
+    run = FakeRun("0.000,0.020\n899.980,0.020\n")
 
-    assert probe_duration(b"x", run) == pytest.approx(84.0)
-    assert len(run.calls) == 2
-    assert "a:0" in run.calls[1]
+    assert probe_duration(b"x", run) == pytest.approx(900.0)
+    assert not any("format=duration" in " ".join(call) for call in run.calls)
 
 
 def test_packet_without_a_duration_counts_as_zero():
-    run = FakeRun("", "0.000,0.020\n5.000,\n")
+    run = FakeRun("0.000,0.020\n5.000,\n")
 
     assert probe_duration(b"x", run) == pytest.approx(5.0)
 
 
 def test_no_audio_packets_is_unreadable():
-    run = FakeRun("N/A\n", "\n")
+    # A video-only file reports no packets for the audio stream, whatever its header length says.
+    run = FakeRun("\n")
 
     with pytest.raises(AudioUnreadable):
         probe_duration(b"x", run)
+
+
+@pytest.mark.parametrize("output", ["0.000,0.010\n", "0.000,0.250\n0.250,0.250\n"])
+def test_a_recording_of_half_a_second_or_less_is_unreadable(output):
+    with pytest.raises(AudioUnreadable):
+        probe_duration(b"x", FakeRun(output))
+
+
+def test_a_recording_just_over_half_a_second_is_accepted():
+    assert probe_duration(b"x", FakeRun("0.000,0.510\n")) == pytest.approx(0.51)
 
 
 def test_nonzero_exit_is_unreadable():
@@ -82,7 +94,7 @@ def test_temporary_file_is_deleted_afterwards():
     def run(args):
         paths.append(args[-1])
         assert os.path.exists(args[-1])
-        return "1.5\n"
+        return "0.000,1.5\n"
 
     probe_duration(b"x", run)
 

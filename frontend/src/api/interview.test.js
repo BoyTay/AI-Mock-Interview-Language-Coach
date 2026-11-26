@@ -106,6 +106,15 @@ test('recording errors show the server message, and an unavailable probe has its
   )
 })
 
+test('recording errors without a server message fall back to a fixed message', () => {
+  expect(describeInterviewError(httpError(422, { error: { code: 'AUDIO_TOO_LONG' } }))).toBe(
+    'This recording is too long. Please record a shorter answer.',
+  )
+  expect(describeInterviewError(httpError(422, { error: { code: 'AUDIO_UNREADABLE' } }))).toBe(
+    'We could not read this recording. Please record again.',
+  )
+})
+
 test('an unavailable AI service and an unreadable reply have their own messages', () => {
   expect(describeInterviewError(httpError(503, apiError('AI_UNAVAILABLE')))).toMatch(/temporarily unavailable/i)
   expect(describeInterviewError(httpError(502, apiError('AI_INVALID_RESPONSE')))).toMatch(/could not read/i)

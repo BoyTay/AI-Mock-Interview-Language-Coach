@@ -2,6 +2,7 @@
 from datetime import datetime
 
 import pytest
+from pydantic import ValidationError
 
 from app.api import routes_interview
 from app.core.config import Settings
@@ -409,6 +410,31 @@ def test_an_expired_recording_answers_410_with_the_retention_days(
         "code": "AUDIO_EXPIRED",
         "message": "This recording was deleted after 30 days.",
     }
+
+
+def test_an_expired_recording_without_a_retention_limit_says_it_was_deleted(
+    client, db_session, rag, use_interviewer, audio_store, monkeypatch
+):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id)
+    message = db_session.get(SessionMessage, message_id)
+    message.audio_path = None
+    message.audio_deleted_at = datetime(2026, 1, 1)
+    db_session.commit()
+    monkeypatch.setattr(
+        routes_interview, "get_settings", lambda: Settings(database_url="sqlite://", audio_retention_days=0)
+    )
+
+    response = playback(client, session_id, message_id)
+
+    assert response.status_code == 410
+    assert response.json()["error"] == {"code": "AUDIO_EXPIRED", "message": "This recording has been deleted."}
+
+
+def test_a_negative_retention_setting_is_rejected():
+    with pytest.raises(ValidationError):
+        Settings(database_url="sqlite://", audio_retention_days=-1)
 
 
 def test_playback_never_leaves_the_upload_directory(client, db_session, rag, use_interviewer, audio_store):

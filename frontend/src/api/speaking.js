@@ -38,7 +38,11 @@ export function describeSpeakingError(error) {
     return 'We could not read this recording. Try again, or record again.'
   }
   if (response.status === 422 && (code === 'AUDIO_TOO_SHORT' || code === 'AUDIO_TOO_LONG')) {
-    return `${response.data.error.message} Your recording is kept.`
+    const fallback =
+      code === 'AUDIO_TOO_SHORT'
+        ? 'This recording is too short. Please record a longer answer.'
+        : 'This recording is too long. Please record a shorter answer.'
+    return `${response.data.error.message || fallback} Your recording is kept.`
   }
   if (response.status === 503 && code === 'AUDIO_PROBE_UNAVAILABLE') {
     return 'The server cannot check recordings right now. Please try again later. Your recording is kept.'
