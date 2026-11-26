@@ -44,8 +44,8 @@
 ### Measuring and checking uploads
 
 - `app/services/audio_probe.py`: `probe_duration(path_or_bytes) -> float` runs `ffprobe -v error` on the bytes (via a temporary file or stdin) with a 10 s timeout.
-  - Duration: `format=duration` when present; otherwise the end time of the last audio packet (`-show_entries packet=pts_time,duration_time`), because Chrome's MediaRecorder webm has no duration in its header.
-  - `ffprobe` exits non-zero, times out, or finds no audio stream: the file is unreadable.
+  - Duration: the end time of the last audio packet (`-select_streams a:0 -show_entries packet=pts_time,duration_time`), always. Chrome's MediaRecorder webm has no duration in its header, and a header's declared duration can be edited, so the header is not used. (Changed after the final review: the first version read `format=duration` first, which let a video-only file and an edited header through.)
+  - `ffprobe` exits non-zero, times out, finds no audio packets, or measures 0.5 s or less: the file is unreadable.
   - `ffprobe` not installed: raise so the request fails with 503 `AUDIO_PROBE_UNAVAILABLE` (a deployment fault, not the user's).
 - Called right after the magic-byte check (`read_audio_field`), before Gemini, by both voice routes. Injected as a FastAPI dependency so tests swap in a fake.
 - New errors (English messages, shown as-is by the clients):
