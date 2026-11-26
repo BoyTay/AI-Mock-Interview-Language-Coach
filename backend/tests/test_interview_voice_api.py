@@ -3,6 +3,7 @@ import pytest
 
 from app.core.errors import AppError
 from app.models import InterviewSession, SessionMessage, UserProfile
+from app.services.audio_probe import AudioUnreadable
 from app.services.audio_store import MAX_AUDIO_BYTES
 from app.services.english_coach import LlmRateLimitError
 from tests.interview_helpers import (
@@ -162,6 +163,46 @@ def test_a_body_that_announces_itself_as_far_too_big_is_refused_up_front(client,
 
     assert response.status_code == 413
     assert interviewer.voice_turns == []
+    assert stored_files(audio_store) == []
+
+
+def test_a_voice_answer_over_185_seconds_is_422(client, db_session, rag, use_interviewer, audio_store, probe):
+    interviewer = use_interviewer()
+    session_id = start(client)["session_id"]
+    probe.seconds = 185.1
+
+    response = answer_voice(client, session_id)
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "AUDIO_TOO_LONG"
+    assert "3:00" in error["message"]
+    assert interviewer.voice_turns == []
+    assert len(messages(db_session, session_id)) == 1
+    assert stored_files(audio_store) == []
+
+
+def test_a_voice_answer_of_185_seconds_is_accepted(client, rag, use_interviewer, audio_store, probe):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    probe.seconds = 185.0
+
+    assert answer_voice(client, session_id).status_code == 200
+
+
+def test_an_unreadable_voice_answer_is_422_before_the_model(
+    client, db_session, rag, use_interviewer, audio_store, probe
+):
+    interviewer = use_interviewer()
+    session_id = start(client)["session_id"]
+    probe.error = AudioUnreadable("no audio")
+
+    response = answer_voice(client, session_id)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "AUDIO_UNREADABLE"
+    assert interviewer.voice_turns == []
+    assert len(messages(db_session, session_id)) == 1
     assert stored_files(audio_store) == []
 
 

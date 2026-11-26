@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.api.routes_english import get_speaking_audio_store, get_speaking_coach
 from app.main import app
 from app.models import SpeakingSubmission, UserProfile
+from app.services.audio_probe import AudioProbeUnavailable, AudioUnreadable
 from app.services.audio_store import MAX_AUDIO_BYTES, AudioStore
 from app.services.english_coach import LlmRateLimitError
 from app.services.speaking_coach import SpeakingCoach
@@ -144,23 +145,80 @@ def test_streak_is_touched(client, db_session, llm):
     assert profile(db_session).last_active_date == date.today()
 
 
-@pytest.mark.parametrize("seconds,status", [("29", 422), ("30", 201), ("120", 201), ("121", 201), ("126", 422)])
-def test_duration_bounds(client, speaking_store, llm, seconds, status):
-    response = evaluate(client, duration_seconds=seconds)
+@pytest.mark.parametrize(
+    "measured,status", [(28.9, 422), (29.0, 201), (29.6, 201), (120.4, 201), (125.0, 201), (125.1, 422)]
+)
+def test_measured_length_bounds(client, speaking_store, llm, probe, measured, status):
+    probe.seconds = measured
+
+    response = evaluate(client)
 
     assert response.status_code == status
     if status == 422:
-        assert response.json()["error"]["code"] == "VALIDATION_ERROR"
-        assert response.json()["error"]["details"][0]["field"] == "body.duration_seconds"
+        error = response.json()["error"]
+        assert error["code"] == ("AUDIO_TOO_SHORT" if measured < 29 else "AUDIO_TOO_LONG")
         assert llm.calls == []
         assert stored_files(speaking_store) == []
 
 
-def test_a_non_numeric_duration_is_422(client, llm):
-    response = evaluate(client, duration_seconds="soon")
+def test_the_length_messages_name_the_limit(client, llm, probe):
+    probe.seconds = 10
+    short = evaluate(client).json()["error"]["message"]
+    probe.seconds = 130
+    long = evaluate(client).json()["error"]["message"]
+
+    assert short == "This recording is shorter than 30 seconds. Please record a longer answer."
+    assert long == "This recording is longer than the limit of 2:00. Please record a shorter answer."
+
+
+def test_measured_length_is_stored_and_used_for_wpm(client, db_session, llm, probe):
+    probe.seconds = 96.4
+
+    body = evaluate(client, duration_seconds="84").json()
+
+    assert body["duration_seconds"] == 96
+    assert body["words_per_minute"] == round(16 * 60 / 96) == 10
+    assert db_session.get(SpeakingSubmission, body["id"]).duration_seconds == 96
+
+
+def test_duration_field_is_optional(client, llm):
+    response = client.post(
+        f"{URL}/evaluate",
+        files={"audio": ("recording.webm", webm_bytes(), "audio/webm")},
+        data={"prompt_text": "Give your update"},
+    )
+
+    assert response.status_code == 201
+
+
+def test_a_non_numeric_duration_field_is_ignored(client, llm):
+    assert evaluate(client, duration_seconds="soon").status_code == 201
+
+
+def test_unreadable_audio_is_422_before_the_model(client, db_session, speaking_store, llm, probe):
+    probe.error = AudioUnreadable("no audio")
+
+    response = evaluate(client)
 
     assert response.status_code == 422
-    assert response.json()["error"]["details"][0]["field"] == "body.duration_seconds"
+    assert response.json()["error"]["code"] == "AUDIO_UNREADABLE"
+    assert response.json()["error"]["message"] == "We could not read this recording. Please record again."
+    assert llm.calls == []
+    assert db_session.scalars(select(SpeakingSubmission)).all() == []
+    assert stored_files(speaking_store) == []
+
+
+def test_missing_ffprobe_is_503(client, db_session, speaking_store, llm, probe):
+    probe.error = AudioProbeUnavailable("ffprobe is not installed")
+
+    response = evaluate(client)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "AUDIO_PROBE_UNAVAILABLE"
+    assert response.json()["error"]["message"] == "The server cannot check recordings right now. Please try again later."
+    assert llm.calls == []
+    assert db_session.scalars(select(SpeakingSubmission)).all() == []
+    assert stored_files(speaking_store) == []
 
 
 def test_missing_prompt_text_is_422(client, speaking_store, llm):
@@ -269,6 +327,7 @@ def test_the_openapi_schema_describes_the_multipart_body(client):
     body = schema["paths"]["/api/v1/english/speaking/evaluate"]["post"]["requestBody"]
     properties = body["content"]["multipart/form-data"]["schema"]["properties"]
     assert set(properties) == {"audio", "prompt_text", "duration_seconds"}
+    assert body["content"]["multipart/form-data"]["schema"]["required"] == ["audio", "prompt_text"]
 
 
 def test_missing_gemini_key_gets_503_and_stores_nothing(client, speaking_store, db_session, monkeypatch):

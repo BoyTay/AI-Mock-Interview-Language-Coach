@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, StringConstraints, field_validator, model_validator
 
 MAX_BAND = 9.0
 
@@ -171,8 +171,8 @@ class PlacedMark(BaseModel):
 
 class SpeakingEvaluateForm(BaseModel):
     prompt_text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TOPIC_CHARS)]
-    # The recorder stops at 120 seconds; a few seconds of slack cover timer ticks.
-    duration_seconds: Annotated[int, Field(ge=30, le=125)]
+    # Ignored: the server measures the recording itself. Old clients may still send it.
+    duration_seconds: int | None = None
 
 
 class SpeakingSubmissionOut(BaseModel):

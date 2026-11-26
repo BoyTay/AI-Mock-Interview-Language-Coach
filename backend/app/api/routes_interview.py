@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.api.audio_upload import open_form, read_audio_field
+from app.api.audio_upload import AudioProbe, get_audio_probe, measure, open_form, read_audio_field
 from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -69,6 +69,10 @@ def start_interview(
     return interview_service.start_interview(db, get_default_profile(db), rag, payload)
 
 
+# A spoken answer may run to 3:00; a few seconds of slack cover the recorder's timer ticks.
+MAX_ANSWER_SECONDS = 185
+
+
 def get_audio_store() -> AudioStore:
     return AudioStore(Path(get_settings().upload_dir))
 
@@ -126,10 +130,12 @@ async def answer_question(
     db: Session = Depends(get_db),
     interviewer: Interviewer = Depends(get_interviewer),
     store: AudioStore = Depends(get_audio_store),
+    probe: AudioProbe = Depends(get_audio_probe),
 ) -> AnswerOut:
     """Answer the pending question with text (JSON `{"answer": ...}`) or by voice (multipart field `audio`)."""
     if _is_multipart(request):
         data, mime_type = await read_audio_field(await open_form(request))
+        await run_in_threadpool(measure, probe, data, max_seconds=MAX_ANSWER_SECONDS, max_label="3:00")
         return await run_in_threadpool(
             _submit_voice, db, interviewer, store, session_id, data, mime_type
         )
