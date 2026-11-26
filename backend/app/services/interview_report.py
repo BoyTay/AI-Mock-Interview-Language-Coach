@@ -65,7 +65,7 @@ def group_turns(messages, plan: list[dict]) -> list[QuestionGroup]:
                     question=asked.content_text,
                     answer=message.content_text,
                     evaluation=message.evaluation,
-                    audio_message_id=message.id if message.audio_path else None,
+                    audio_message_id=message.id if message.audio_path or message.audio_deleted_at else None,
                 )
             )
     return [g for g in groups if g.turns]

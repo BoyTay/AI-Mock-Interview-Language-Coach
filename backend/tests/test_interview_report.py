@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 
 from app.services import interview_report as report
@@ -9,13 +10,27 @@ PLAN = [
 
 
 def ai(kind, text):
-    return SimpleNamespace(id=None, sender="AI", question_type=kind, content_text=text, evaluation=None, audio_path=None)
+    return SimpleNamespace(
+        id=None,
+        sender="AI",
+        question_type=kind,
+        content_text=text,
+        evaluation=None,
+        audio_path=None,
+        audio_deleted_at=None,
+    )
 
 
-def user(kind, text, tech=70, clarity=80):
+def user(kind, text, tech=70, clarity=80, id=None, audio_path=None, audio_deleted_at=None):
     evaluation = {"technical_accuracy_score": tech, "communication_clarity_score": clarity}
     return SimpleNamespace(
-        id=None, sender="USER", question_type=kind, content_text=text, evaluation=evaluation, audio_path=None
+        id=id,
+        sender="USER",
+        question_type=kind,
+        content_text=text,
+        evaluation=evaluation,
+        audio_path=audio_path,
+        audio_deleted_at=audio_deleted_at,
     )
 
 
@@ -35,6 +50,21 @@ def test_turns_are_grouped_under_their_main_question():
     assert [t.type for t in groups[0].turns] == ["MAIN_QUESTION", "FOLLOW_UP"]
     assert [(t.question, t.answer) for t in groups[0].turns] == [("Main 1?", "Answer 1."), ("Why?", "Because.")]
     assert groups[0].entry["reference_answer"] == "Ref 1."
+
+
+def test_a_turn_keeps_its_recording_id_even_after_the_recording_expired():
+    messages = [
+        ai("MAIN_QUESTION", "Main 1?"),
+        user("MAIN_QUESTION", "Spoken.", id=11, audio_path="interviews/1/a.webm"),
+        ai("FOLLOW_UP", "Why?"),
+        user("FOLLOW_UP", "Expired.", id=12, audio_deleted_at=datetime(2026, 1, 1)),
+        ai("FOLLOW_UP", "And?"),
+        user("FOLLOW_UP", "Typed."),
+    ]
+
+    turns = report.group_turns(messages, PLAN)[0].turns
+
+    assert [t.audio_message_id for t in turns] == [11, 12, None]
 
 
 def test_a_question_that_was_asked_but_never_answered_is_left_out():
