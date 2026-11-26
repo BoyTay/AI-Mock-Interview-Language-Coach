@@ -164,7 +164,9 @@ def answer_audio(
     store: AudioStore = Depends(get_audio_store),
 ) -> FileResponse:
     """Play back the recording of one of the caller's spoken answers."""
-    path, media_type = interview_service.get_answer_audio(db, get_default_profile(db), store, session_id, message_id)
+    path, media_type = interview_service.get_answer_audio(
+        db, get_default_profile(db), store, session_id, message_id, get_settings().audio_retention_days
+    )
     return FileResponse(path, media_type=media_type)
 
 

@@ -1,6 +1,10 @@
 """Answering an interview question by voice: POST /interviews/{id}/answer with a multipart `audio` field."""
+from datetime import datetime
+
 import pytest
 
+from app.api import routes_interview
+from app.core.config import Settings
 from app.core.errors import AppError
 from app.models import InterviewSession, SessionMessage, UserProfile
 from app.services.audio_probe import AudioUnreadable
@@ -382,6 +386,29 @@ def test_playback_when_the_file_is_missing_is_404(client, db_session, rag, use_i
     audio_store.delete(messages(db_session, session_id)[1].audio_path)
 
     assert playback(client, session_id, message_id).status_code == 404
+
+
+def test_an_expired_recording_answers_410_with_the_retention_days(
+    client, db_session, rag, use_interviewer, audio_store, monkeypatch
+):
+    use_interviewer()
+    session_id = start(client)["session_id"]
+    message_id = spoken(client, session_id)
+    message = db_session.get(SessionMessage, message_id)
+    message.audio_path = None
+    message.audio_deleted_at = datetime(2026, 1, 1)
+    db_session.commit()
+    monkeypatch.setattr(
+        routes_interview, "get_settings", lambda: Settings(database_url="sqlite://", audio_retention_days=30)
+    )
+
+    response = playback(client, session_id, message_id)
+
+    assert response.status_code == 410
+    assert response.json()["error"] == {
+        "code": "AUDIO_EXPIRED",
+        "message": "This recording was deleted after 30 days.",
+    }
 
 
 def test_playback_never_leaves_the_upload_directory(client, db_session, rag, use_interviewer, audio_store):

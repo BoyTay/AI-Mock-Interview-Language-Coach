@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS session_messages (
     question_type VARCHAR(30),
     content_text TEXT NOT NULL,
     audio_path VARCHAR(255),
+    audio_deleted_at TIMESTAMP,
     evaluation JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -83,7 +84,7 @@ CREATE TABLE IF NOT EXISTS speaking_submissions (
     user_id INT NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
     prompt_text TEXT NOT NULL,
     transcript TEXT NOT NULL,
-    audio_path VARCHAR(255) NOT NULL,
+    audio_path VARCHAR(255),
     duration_seconds INT NOT NULL,
     words_per_minute INT NOT NULL,
     overall_band NUMERIC(3, 1) NOT NULL,
