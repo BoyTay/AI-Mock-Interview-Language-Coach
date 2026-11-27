@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.sm2_scheduler import CardState, review, state_from_card
+from app.services.sm2_scheduler import GRADES, CardState, preview_intervals, review, state_from_card
 
 TODAY = date(2026, 11, 27)
 
@@ -112,3 +112,26 @@ def test_state_from_card_accepts_float():
 def test_state_from_card_fills_none_with_defaults():
     card = SimpleNamespace(repetition_count=None, interval_days=None, ease_factor=None)
     assert state_from_card(card) == CardState()
+
+
+def test_preview_example_from_plan():
+    preview = preview_intervals(s(2, 6, "2.50"))
+    assert preview == {"again": 1, "hard": 1, "good": 14, "easy": 16}
+    assert list(preview) == ["again", "hard", "good", "easy"]
+
+
+def test_preview_new_card_is_all_one_day():
+    assert preview_intervals(CardState()) == {"again": 1, "hard": 1, "good": 1, "easy": 1}
+
+
+def test_preview_second_review():
+    assert preview_intervals(s(1, 1, "2.50")) == {"again": 1, "hard": 1, "good": 6, "easy": 6}
+
+
+@pytest.mark.parametrize(
+    "state", [CardState(), s(1, 1, "2.50"), s(2, 6, "2.50"), s(4, 36, "1.30"), s(2, 5, "2.40")]
+)
+def test_preview_matches_review(state):
+    preview = preview_intervals(state)
+    for name, q in GRADES.items():
+        assert preview[name] == review(state, q, TODAY).state.interval_days

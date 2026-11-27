@@ -76,3 +76,8 @@ def _next_state(state: CardState, q: int) -> CardState:
 def review(state: CardState, q: int, today: date) -> ReviewResult:
     new_state = _next_state(state, q)
     return ReviewResult(state=new_state, next_review_date=today + timedelta(days=new_state.interval_days))
+
+
+def preview_intervals(state: CardState) -> dict[str, int]:
+    """Days until the next review for each button; nothing is stored."""
+    return {name: _next_state(state, q).interval_days for name, q in GRADES.items()}
