@@ -34,11 +34,34 @@ class FlashcardCreate(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_EXPLANATION_CHARS)] | None = None
 
 
+class NextIntervals(BaseModel):
+    """Days until the next review if the matching rating button is pressed."""
+
+    again: int
+    hard: int
+    good: int
+    easy: int
+
+
 class FlashcardOut(BaseModel):
     id: int
     source_type: str
     front_content: str
     back_content: str
     explanation: str | None
-    next_review_date: date
+    # None only for hand-edited rows; such a card counts as due.
+    next_review_date: date | None
     created_at: datetime
+    repetition_count: int
+    interval_days: int
+    next_intervals: NextIntervals
+
+
+class DueFlashcards(BaseModel):
+    cards: list[FlashcardOut]
+    total_due: int
+
+
+class FlashcardPage(BaseModel):
+    cards: list[FlashcardOut]
+    total: int
