@@ -39,7 +39,9 @@ def other_profile(db_session) -> UserProfile:
     return other
 
 
-def add_card(db_session, front, *, profile_id=_UNSET, n=0, i=1, ef="2.50", due=_UNSET, source="GRAMMAR_ERROR"):
+def add_card(
+    db_session, front, *, profile_id=_UNSET, n=0, i=1, ef="2.50", due=_UNSET, source="GRAMMAR_ERROR", **extra
+):
     """Insert a row directly; None is written as NULL (core insert skips the ORM's defaults)."""
     values = {
         "user_id": default_profile(db_session).id if profile_id is _UNSET else profile_id,
@@ -50,6 +52,7 @@ def add_card(db_session, front, *, profile_id=_UNSET, n=0, i=1, ef="2.50", due=_
         "interval_days": i,
         "ease_factor": None if ef is None else Decimal(ef),
         "next_review_date": TODAY if due is _UNSET else due,
+        **extra,
     }
     card_id = db_session.execute(insert(MistakeCard).values(**values)).inserted_primary_key[0]
     db_session.commit()
@@ -567,3 +570,28 @@ def test_review_starts_streak_on_first_activity(client, db_session):
     client.patch(review_url(card), json={"q": 3})
 
     assert streak(db_session) == (1, TODAY)
+
+
+def test_card_with_null_created_at_is_listed_and_reviewable(client, db_session):
+    add_card(db_session, "normal")
+    card = add_card(db_session, "imported", created_at=None)
+
+    listed = client.get(URL)
+    due = client.get(f"{URL}/due")
+    reviewed = client.patch(review_url(card), json={"q": 3})
+
+    assert listed.status_code == 200 and "imported" in fronts(listed)
+    assert due.status_code == 200 and "imported" in fronts(due)
+    assert reviewed.status_code == 200
+    assert reviewed.json()["created_at"] is None
+
+
+def test_explanation_edit_on_a_card_with_an_identical_twin(client, db_session):
+    # Two identical rows can exist (a double-clicked save racing the create dedupe on Postgres).
+    card = add_card(db_session, "twin")
+    add_card(db_session, "twin")
+
+    response = client.patch(f"{URL}/{card.id}", json={"explanation": "Why it is wrong."})
+
+    assert response.status_code == 200
+    assert snapshot(db_session, card.id)[2] == "Why it is wrong."

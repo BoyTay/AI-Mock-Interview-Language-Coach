@@ -125,20 +125,19 @@ def update_flashcard(card_id: int, payload: FlashcardUpdate, db: Session = Depen
     changes = payload.model_dump(include=payload.model_fields_set)
     if "explanation" in changes:
         changes["explanation"] = changes["explanation"] or None
-    front = changes.get("front_content", card.front_content)
-    back = changes.get("back_content", card.back_content)
-
-    duplicate = db.scalars(
-        select(MistakeCard.id).where(
-            MistakeCard.user_id == profile.id,
-            MistakeCard.id != card.id,
-            MistakeCard.source_type == card.source_type,
-            MistakeCard.front_content == front,
-            MistakeCard.back_content == back,
-        )
-    ).first()
-    if duplicate is not None:
-        raise AppError(409, "DUPLICATE_CARD", "Another card already has this front and back.")
+    # Only a change to a side can create a duplicate; an explanation-only edit must work even if a twin exists.
+    if "front_content" in changes or "back_content" in changes:
+        duplicate = db.scalars(
+            select(MistakeCard.id).where(
+                MistakeCard.user_id == profile.id,
+                MistakeCard.id != card.id,
+                MistakeCard.source_type == card.source_type,
+                MistakeCard.front_content == changes.get("front_content", card.front_content),
+                MistakeCard.back_content == changes.get("back_content", card.back_content),
+            )
+        ).first()
+        if duplicate is not None:
+            raise AppError(409, "DUPLICATE_CARD", "Another card already has this front and back.")
 
     for name, value in changes.items():
         setattr(card, name, value)  # schedule columns are not in FlashcardUpdate, so they stay as they are

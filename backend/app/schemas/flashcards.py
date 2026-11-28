@@ -69,9 +69,9 @@ class FlashcardOut(BaseModel):
     front_content: str
     back_content: str
     explanation: str | None
-    # None only for hand-edited rows; such a card counts as due.
+    # Both nullable columns: None only for hand-edited or imported rows (such a card counts as due).
     next_review_date: date | None
-    created_at: datetime
+    created_at: datetime | None
     repetition_count: int
     interval_days: int
     next_intervals: NextIntervals
