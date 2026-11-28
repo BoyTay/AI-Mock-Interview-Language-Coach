@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.api.routes_profile import get_default_profile
@@ -15,10 +15,16 @@ from app.schemas.flashcards import (
     FlashcardPage,
     FlashcardUpdate,
     NextIntervals,
+    ReviewRequest,
 )
-from app.services.sm2_scheduler import preview_intervals, state_from_card
+from app.services.sm2_scheduler import preview_intervals, review, state_from_card
+from app.services.streak import touch_streak
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
+
+
+def _not_due() -> AppError:
+    return AppError(409, "CARD_NOT_DUE", "This card is not due for review yet.")
 
 
 def to_card_out(card: MistakeCard) -> FlashcardOut:
@@ -147,3 +153,48 @@ def delete_flashcard(card_id: int, db: Session = Depends(get_db)) -> Response:
     db.delete(card)
     db.commit()
     return Response(status_code=204)
+
+
+@router.patch("/{card_id}/review", response_model=FlashcardOut)
+def review_flashcard(card_id: int, payload: ReviewRequest, db: Session = Depends(get_db)) -> FlashcardOut:
+    today = date.today()
+    profile = get_default_profile(db)
+    card = get_own_card(db, profile, card_id)
+    if card.next_review_date is not None and card.next_review_date > today:
+        # Only the first rating of a due card counts; re-showing it later in the session is UI practice.
+        raise _not_due()
+    # The values this rating was computed from: the write below only lands if they are still in the row.
+    old_n, old_interval = card.repetition_count, card.interval_days
+
+    try:
+        result = review(state_from_card(card), payload.q, today)
+    except OverflowError:
+        # Only reachable with corrupt stored data (an interval so long the date passes year 9999).
+        raise AppError(422, "CARD_SCHEDULE_INVALID", "This card's schedule is invalid. Edit or delete the card.")
+
+    written = db.execute(
+        update(MistakeCard)
+        .where(
+            MistakeCard.id == card.id,
+            MistakeCard.user_id == profile.id,
+            _is_due(today),
+            MistakeCard.repetition_count.is_not_distinct_from(old_n),
+            MistakeCard.interval_days.is_not_distinct_from(old_interval),
+        )
+        .values(
+            repetition_count=result.state.repetition_count,
+            interval_days=result.state.interval_days,
+            ease_factor=result.state.ease_factor,
+            next_review_date=result.next_review_date,
+        )
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    if written == 0:
+        # Another rating (double click, retry) changed the card first.
+        db.rollback()
+        raise _not_due()
+
+    touch_streak(profile, today)
+    db.commit()
+    db.refresh(card)
+    return to_card_out(card)

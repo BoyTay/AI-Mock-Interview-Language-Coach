@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, select, update
 
 from app.models import MistakeCard, UserProfile
 
@@ -420,3 +420,150 @@ def test_delete_other_profiles_card_is_404(client, db_session):
 
     assert_card_not_found(response)
     assert snapshot(db_session, theirs.id) is not None
+
+
+def review_url(card) -> str:
+    return f"{URL}/{card.id}/review"
+
+
+def streak(db_session) -> tuple:
+    db_session.expire_all()
+    p = default_profile(db_session)
+    return (p.streak_days, p.last_active_date)
+
+
+def test_review_good_on_second_success(client, db_session):
+    card = add_card(db_session, "x", n=1, i=1, ef="2.50")
+
+    response = client.patch(review_url(card), json={"q": 3})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert (data["repetition_count"], data["interval_days"]) == (2, 6)
+    assert data["next_review_date"] == (TODAY + timedelta(days=6)).isoformat()
+    assert data["next_intervals"] == {"again": 1, "hard": 1, "good": 13, "easy": 15}
+    assert snapshot(db_session, card.id)[3:] == (2, 6, Decimal("2.36"), TODAY + timedelta(days=6))
+
+
+def test_review_again_resets(client, db_session):
+    card = add_card(db_session, "x", n=4, i=36, ef="2.50")
+
+    data = client.patch(review_url(card), json={"q": 0}).json()
+
+    assert (data["repetition_count"], data["interval_days"]) == (0, 1)
+    assert data["next_review_date"] == (TODAY + timedelta(days=1)).isoformat()
+
+
+def test_review_overdue_card(client, db_session):
+    card = add_card(db_session, "x", due=TODAY - timedelta(days=5))
+
+    assert client.patch(review_url(card), json={"q": 5}).status_code == 200
+
+
+def test_review_card_not_due_returns_409(client, db_session):
+    card = add_card(db_session, "x", n=2, i=6, due=TODAY + timedelta(days=1))
+    before, streak_before = snapshot(db_session, card.id), streak(db_session)
+
+    response = client.patch(review_url(card), json={"q": 3})
+
+    assert response.status_code == 409
+    assert response.json()["error"] == {"code": "CARD_NOT_DUE", "message": "This card is not due for review yet."}
+    assert snapshot(db_session, card.id) == before
+    assert streak(db_session) == streak_before
+
+
+def test_second_rating_today_returns_409(client, db_session):
+    card = add_card(db_session, "x")
+
+    assert client.patch(review_url(card), json={"q": 3}).status_code == 200
+    assert client.patch(review_url(card), json={"q": 5}).status_code == 409
+
+
+def test_review_that_loses_a_race_returns_409(client, db_session, monkeypatch):
+    import app.api.routes_flashcards as routes
+
+    card = add_card(db_session, "x", n=2, i=6)
+    streak_before = streak(db_session)
+    real_review = routes.review
+
+    def another_rating_lands_first(state, q, today):
+        result = real_review(state, q, today)
+        db_session.execute(
+            update(MistakeCard)
+            .where(MistakeCard.id == card.id)
+            .values(repetition_count=9, next_review_date=TODAY + timedelta(days=4))
+            .execution_options(synchronize_session=False)
+        )
+        db_session.commit()
+        return result
+
+    monkeypatch.setattr(routes, "review", another_rating_lands_first)
+
+    response = client.patch(review_url(card), json={"q": 5})
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "CARD_NOT_DUE"
+    row = snapshot(db_session, card.id)
+    assert (row[3], row[6]) == (9, TODAY + timedelta(days=4))
+    assert streak(db_session) == streak_before
+
+
+@pytest.mark.parametrize("body", [{"q": 2}, {"q": 4}, {"q": -1}, {"q": True}, {"q": "3"}, {"q": 3.0}, {}])
+def test_review_rejects_invalid_grades(client, db_session, body):
+    card = add_card(db_session, "x", n=2, i=6)
+    before = snapshot(db_session, card.id)
+
+    response = client.patch(review_url(card), json=body)
+
+    assert response.status_code == 422
+    assert snapshot(db_session, card.id) == before
+
+
+def test_review_unknown_or_other_profiles_card_is_404(client, db_session):
+    theirs = add_card(db_session, "theirs", profile_id=other_profile(db_session).id)
+
+    assert_card_not_found(client.patch(review_url(theirs), json={"q": 3}))
+    assert_card_not_found(client.patch(f"{URL}/9999/review", json={"q": 3}))
+    assert snapshot(db_session, theirs.id)[3] == 0
+
+
+def test_review_card_with_null_schedule(client, db_session):
+    card = add_card(db_session, "x", n=None, i=None, ef=None, due=None)
+
+    response = client.patch(review_url(card), json={"q": 3})
+
+    assert response.status_code == 200
+    assert snapshot(db_session, card.id)[3:] == (1, 1, Decimal("2.36"), TODAY + timedelta(days=1))
+
+
+def test_review_with_overflowing_interval_returns_422(client, db_session):
+    card = add_card(db_session, "x", n=5, i=3_000_000)
+    before = snapshot(db_session, card.id)
+
+    response = client.patch(review_url(card), json={"q": 5})
+
+    assert response.status_code == 422
+    assert response.json()["error"] == {
+        "code": "CARD_SCHEDULE_INVALID",
+        "message": "This card's schedule is invalid. Edit or delete the card.",
+    }
+    assert snapshot(db_session, card.id) == before
+
+
+def test_review_extends_streak(client, db_session):
+    p = default_profile(db_session)
+    p.streak_days, p.last_active_date = 4, TODAY - timedelta(days=1)
+    db_session.commit()
+    card = add_card(db_session, "x")
+
+    client.patch(review_url(card), json={"q": 3})
+
+    assert streak(db_session) == (5, TODAY)
+
+
+def test_review_starts_streak_on_first_activity(client, db_session):
+    card = add_card(db_session, "x")
+
+    client.patch(review_url(card), json={"q": 3})
+
+    assert streak(db_session) == (1, TODAY)

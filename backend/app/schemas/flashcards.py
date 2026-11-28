@@ -3,7 +3,9 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, StrictInt, StringConstraints, model_validator
+
+from app.services.sm2_scheduler import GRADES
 
 MAX_SIDE_CHARS = 1000
 MAX_EXPLANATION_CHARS = 2000
@@ -83,3 +85,14 @@ class DueFlashcards(BaseModel):
 class FlashcardPage(BaseModel):
     cards: list[FlashcardOut]
     total: int
+
+
+def _check_grade(q: int) -> int:
+    if q not in GRADES.values():
+        raise ValueError(f"q must be one of {sorted(GRADES.values())}")
+    return q
+
+
+class ReviewRequest(BaseModel):
+    # StrictInt, not Literal[0, 1, 3, 5]: Literal turns JSON `true` into 1 (a Hard rating) and 3.0 into 3.
+    q: Annotated[StrictInt, AfterValidator(_check_grade)]
