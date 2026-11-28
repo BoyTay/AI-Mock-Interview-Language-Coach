@@ -279,4 +279,144 @@ def test_list_ignores_other_profiles_cards(client, db_session):
 
 
 def test_ping_placeholder_is_gone(client):
-    assert client.get(f"{URL}/ping").status_code == 404
+    # 405 rather than 404 once /{card_id} has PATCH and DELETE: the path shape exists, GET does not.
+    assert client.get(f"{URL}/ping").status_code in (404, 405)
+    assert f"{URL}/ping" not in client.get("/openapi.json").json()["paths"]
+
+
+def assert_card_not_found(response) -> None:
+    # The message tells our 404 apart from FastAPI's "route does not exist" 404.
+    assert response.status_code == 404
+    assert response.json()["error"] == {"code": "NOT_FOUND", "message": "Card not found"}
+
+
+def snapshot(db_session, card_id) -> tuple:
+    db_session.expire_all()
+    row = db_session.get(MistakeCard, card_id)
+    if row is None:
+        return None
+    return (
+        row.front_content,
+        row.back_content,
+        row.explanation,
+        row.repetition_count,
+        row.interval_days,
+        row.ease_factor,
+        row.next_review_date,
+    )
+
+
+def test_edit_changes_text_and_keeps_schedule(client, db_session):
+    card = add_card(db_session, "He go home.", n=2, i=6, ef="2.36", due=TODAY + timedelta(days=3))
+
+    response = client.patch(f"{URL}/{card.id}", json={"front_content": "She go home.", "back_content": "She goes home."})
+
+    assert response.status_code == 200
+    assert response.json()["front_content"] == "She go home."
+    assert snapshot(db_session, card.id) == (
+        "She go home.", "She goes home.", None, 2, 6, Decimal("2.36"), TODAY + timedelta(days=3)
+    )
+
+
+def test_edit_only_explanation_keeps_sides(client, db_session):
+    card = add_card(db_session, "He go home.")
+
+    response = client.patch(f"{URL}/{card.id}", json={"explanation": "Third person singular."})
+
+    assert response.status_code == 200
+    front, back, explanation, *_ = snapshot(db_session, card.id)
+    assert (front, back, explanation) == ("He go home.", "He go home. (fixed)", "Third person singular.")
+
+
+@pytest.mark.parametrize("value", [None, "   "])
+def test_edit_clears_explanation(client, db_session, value):
+    card = add_card(db_session, "He go home.")
+    client.patch(f"{URL}/{card.id}", json={"explanation": "Something."})
+
+    response = client.patch(f"{URL}/{card.id}", json={"explanation": value})
+
+    assert response.status_code == 200
+    assert response.json()["explanation"] is None
+    assert snapshot(db_session, card.id)[2] is None
+
+
+def test_edit_squashes_whitespace(client, db_session):
+    card = add_card(db_session, "x")
+
+    response = client.patch(f"{URL}/{card.id}", json={"front_content": "  He  go\nhome. "})
+
+    assert response.json()["front_content"] == "He go home."
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"front_content": None}, {"back_content": None}, {"front_content": "   "}, {"front_content": "x" * 1001}],
+)
+def test_edit_rejects_invalid_sides(client, db_session, body):
+    card = add_card(db_session, "He go home.")
+    before = snapshot(db_session, card.id)
+
+    response = client.patch(f"{URL}/{card.id}", json=body)
+
+    assert response.status_code == 422
+    assert snapshot(db_session, card.id) == before
+
+
+def test_empty_edit_returns_card_unchanged(client, db_session):
+    card = add_card(db_session, "He go home.")
+    before = snapshot(db_session, card.id)
+
+    response = client.patch(f"{URL}/{card.id}", json={})
+
+    assert response.status_code == 200
+    assert response.json()["front_content"] == "He go home."
+    assert snapshot(db_session, card.id) == before
+
+
+def test_edit_into_another_card_returns_409(client, db_session):
+    add_card(db_session, "taken")
+    card = add_card(db_session, "mine")
+    before = snapshot(db_session, card.id)
+
+    response = client.patch(f"{URL}/{card.id}", json={"front_content": "taken", "back_content": "taken (fixed)"})
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "DUPLICATE_CARD"
+    assert snapshot(db_session, card.id) == before
+
+
+def test_edit_to_its_own_text_is_not_a_duplicate(client, db_session):
+    card = add_card(db_session, "mine")
+
+    response = client.patch(f"{URL}/{card.id}", json={"front_content": "mine", "back_content": "mine (fixed)"})
+
+    assert response.status_code == 200
+
+
+def test_edit_unknown_or_other_profiles_card_is_404(client, db_session):
+    theirs = add_card(db_session, "theirs", profile_id=other_profile(db_session).id)
+
+    for card_id in (theirs.id, 9999):
+        response = client.patch(f"{URL}/{card_id}", json={"front_content": "changed"})
+        assert_card_not_found(response)
+    assert snapshot(db_session, theirs.id)[0] == "theirs"
+
+
+def test_delete_removes_the_card(client, db_session):
+    card = add_card(db_session, "mine")
+
+    response = client.delete(f"{URL}/{card.id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert snapshot(db_session, card.id) is None
+    assert_card_not_found(client.delete(f"{URL}/{card.id}"))
+
+
+def test_delete_other_profiles_card_is_404(client, db_session):
+    theirs = add_card(db_session, "theirs", profile_id=other_profile(db_session).id)
+
+    response = client.delete(f"{URL}/{theirs.id}")
+
+    assert_card_not_found(response)
+    assert snapshot(db_session, theirs.id) is not None

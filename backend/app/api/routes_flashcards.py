@@ -8,7 +8,14 @@ from app.api.routes_profile import get_default_profile
 from app.core.database import get_db
 from app.core.errors import AppError
 from app.models import MistakeCard, UserProfile
-from app.schemas.flashcards import DueFlashcards, FlashcardCreate, FlashcardOut, FlashcardPage, NextIntervals
+from app.schemas.flashcards import (
+    DueFlashcards,
+    FlashcardCreate,
+    FlashcardOut,
+    FlashcardPage,
+    FlashcardUpdate,
+    NextIntervals,
+)
 from app.services.sm2_scheduler import preview_intervals, state_from_card
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
@@ -103,3 +110,40 @@ def create_flashcard(
     db.commit()
     db.refresh(card)
     return to_card_out(card)
+
+
+@router.patch("/{card_id}", response_model=FlashcardOut)
+def update_flashcard(card_id: int, payload: FlashcardUpdate, db: Session = Depends(get_db)) -> FlashcardOut:
+    profile = get_default_profile(db)
+    card = get_own_card(db, profile, card_id)
+    changes = payload.model_dump(include=payload.model_fields_set)
+    if "explanation" in changes:
+        changes["explanation"] = changes["explanation"] or None
+    front = changes.get("front_content", card.front_content)
+    back = changes.get("back_content", card.back_content)
+
+    duplicate = db.scalars(
+        select(MistakeCard.id).where(
+            MistakeCard.user_id == profile.id,
+            MistakeCard.id != card.id,
+            MistakeCard.source_type == card.source_type,
+            MistakeCard.front_content == front,
+            MistakeCard.back_content == back,
+        )
+    ).first()
+    if duplicate is not None:
+        raise AppError(409, "DUPLICATE_CARD", "Another card already has this front and back.")
+
+    for name, value in changes.items():
+        setattr(card, name, value)  # schedule columns are not in FlashcardUpdate, so they stay as they are
+    db.commit()
+    db.refresh(card)
+    return to_card_out(card)
+
+
+@router.delete("/{card_id}", status_code=204)
+def delete_flashcard(card_id: int, db: Session = Depends(get_db)) -> Response:
+    card = get_own_card(db, get_default_profile(db), card_id)
+    db.delete(card)
+    db.commit()
+    return Response(status_code=204)
