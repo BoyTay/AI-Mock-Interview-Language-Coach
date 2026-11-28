@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -14,7 +14,7 @@ from app.api.routes_profile import get_default_profile
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import AppError
-from app.models import SpeakingSubmission, UserProfile, WritingSubmission
+from app.models import SpeakingSubmission, WritingSubmission
 from app.schemas.english import (
     MarkKind,
     PlacedMark,
@@ -33,6 +33,7 @@ from app.services import speaking_prompts
 from app.services.audio_store import GEMINI_MIME_TYPES, AudioStore
 from app.services.english_coach import Audio, EnglishCoach, build_english_coach
 from app.services.speaking_coach import GradedSpeech, SpeakingCoach, build_speaking_coach
+from app.services.streak import touch_streak
 from app.services.transcript_marks import words_per_minute
 from app.services.writing_prompts import TASK_LIMITS, pick_prompt
 
@@ -85,14 +86,6 @@ def band_delta(db: Session, submission: WritingSubmission) -> float | None:
     if previous is None:
         return None
     return float(submission.overall_band - previous)
-
-
-def touch_streak(profile: UserProfile, today: date) -> None:
-    last = profile.last_active_date
-    if last == today:
-        return
-    profile.streak_days = (profile.streak_days or 0) + 1 if last == today - timedelta(days=1) else 1
-    profile.last_active_date = today
 
 
 def to_out(db: Session, submission: WritingSubmission) -> WritingSubmissionOut:

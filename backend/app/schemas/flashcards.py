@@ -3,7 +3,9 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, StringConstraints
+from pydantic import AfterValidator, BaseModel, StrictInt, StringConstraints, model_validator
+
+from app.services.sm2_scheduler import GRADES
 
 MAX_SIDE_CHARS = 1000
 MAX_EXPLANATION_CHARS = 2000
@@ -27,11 +29,38 @@ Side = Annotated[
 ]
 
 
+Explanation = Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_EXPLANATION_CHARS)]
+
+
 class FlashcardCreate(BaseModel):
     source_type: CardSource
     front_content: Side
     back_content: Side
-    explanation: Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_EXPLANATION_CHARS)] | None = None
+    explanation: Explanation | None = None
+
+
+class FlashcardUpdate(BaseModel):
+    """Only the fields sent are changed; `explanation: null` (or blank) clears it."""
+
+    front_content: Side | None = None
+    back_content: Side | None = None
+    explanation: Explanation | None = None
+
+    @model_validator(mode="after")
+    def _sides_cannot_be_null(self) -> "FlashcardUpdate":
+        for name in ("front_content", "back_content"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
+
+
+class NextIntervals(BaseModel):
+    """Days until the next review if the matching rating button is pressed."""
+
+    again: int
+    hard: int
+    good: int
+    easy: int
 
 
 class FlashcardOut(BaseModel):
@@ -40,5 +69,30 @@ class FlashcardOut(BaseModel):
     front_content: str
     back_content: str
     explanation: str | None
-    next_review_date: date
-    created_at: datetime
+    # Both nullable columns: None only for hand-edited or imported rows (such a card counts as due).
+    next_review_date: date | None
+    created_at: datetime | None
+    repetition_count: int
+    interval_days: int
+    next_intervals: NextIntervals
+
+
+class DueFlashcards(BaseModel):
+    cards: list[FlashcardOut]
+    total_due: int
+
+
+class FlashcardPage(BaseModel):
+    cards: list[FlashcardOut]
+    total: int
+
+
+def _check_grade(q: int) -> int:
+    if q not in GRADES.values():
+        raise ValueError(f"q must be one of {sorted(GRADES.values())}")
+    return q
+
+
+class ReviewRequest(BaseModel):
+    # StrictInt, not Literal[0, 1, 3, 5]: Literal turns JSON `true` into 1 (a Hard rating) and 3.0 into 3.
+    q: Annotated[StrictInt, AfterValidator(_check_grade)]
